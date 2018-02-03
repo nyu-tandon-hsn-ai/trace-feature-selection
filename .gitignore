@@ -99,3 +99,9 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# local data file
+data/
+
+# editor settings
+.vscode
