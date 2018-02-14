@@ -105,3 +105,6 @@ data/
 
 # editor settings
 .vscode
+
+# macOS file system related file
+.DS_Store
