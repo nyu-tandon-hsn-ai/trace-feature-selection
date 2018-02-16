@@ -100,8 +100,11 @@ ENV/
 # mypy
 .mypy_cache/
 
-# local data file
-data/
-
 # editor settings
 .vscode
+
+# macOS file system related file
+.DS_Store
+
+# local data file
+data/
