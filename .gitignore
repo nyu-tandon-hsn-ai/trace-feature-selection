@@ -105,3 +105,6 @@ ENV/
 
 # macOS file system related file
 .DS_Store
+
+# local data file
+data/
