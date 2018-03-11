@@ -1,107 +1,134 @@
-Package            Version            
------------------- -------------------
-appnope            0.1.0              
-asn1crypto         0.24.0             
-astroid            1.6.1              
-attrs              17.4.0             
-Automat            0.6.0              
-awscli             1.14.30            
-bleach             2.1.1              
-boto3              1.5.20             
-botocore           1.8.34             
-certifi            2017.11.5          
-cffi               1.11.4             
-chardet            3.0.4              
-click              6.7                
-colorama           0.3.7              
-constantly         15.1.0             
-cryptography       2.1.4              
-cssselect          1.0.3              
-cycler             0.10.0             
-decorator          4.1.2              
-defusedxml         0.5.0              
-docutils           0.14               
-entrypoints        0.2.3              
-Flask              0.12.2             
-Flask-Login        0.4.1              
-html5lib           1.0.1              
-hyperlink          17.3.1             
-idna               2.6                
-incremental        17.5.0             
-ipykernel          4.7.0              
-ipython            6.2.1              
-ipython-genutils   0.2.0              
-ipywidgets         7.0.5              
-isort              4.2.15             
-itsdangerous       0.24               
-jedi               0.11.0             
-Jinja2             2.10               
-jmespath           0.9.3              
-jsonschema         2.6.0              
-jupyter-client     5.1.0              
-jupyter-console    5.2.0              
-jupyter-core       4.4.0              
-lazy-object-proxy  1.3.1              
-Logbook            1.1.0              
-lxml               4.1.1              
-MarkupSafe         1.0                
-matplotlib         2.1.2              
-mccabe             0.6.1              
-mistune            0.8.1              
-nbconvert          5.3.1              
-nbformat           4.4.0              
-notebook           5.2.2              
-numpy              1.14.0             
-pandas             0.22.0             
-pandocfilters      1.4.2              
-parsel             1.3.1              
-parso              0.1.1              
-pexpect            4.3.0              
-pickleshare        0.7.4              
-pip                9.0.1              
-prompt-toolkit     1.0.15             
-ptyprocess         0.5.2              
-py                 1.5.2              
-pyasn1             0.4.2              
-pyasn1-modules     0.2.1              
-pycparser          2.18               
-pycurl             7.43.0.1           
-PyDispatcher       2.0.5              
-Pygments           2.2.0              
-pylint             1.8.2              
-pyOpenSSL          17.5.0             
-pyparsing          2.2.0              
-pyquery            1.4.0              
-pyshark            0.3.7.11           
-python-dateutil    2.6.1              
-pytz               2017.3             
-PyYAML             3.12               
-pyzmq              16.0.3             
-qtconsole          4.3.1              
-queuelib           1.4.2              
-requests           2.18.4             
-rsa                3.4.2              
-s3transfer         0.1.12             
-Scrapy             1.5.0              
-service-identity   17.0.0             
-setuptools         36.5.0.post20170921
-simplegeneric      0.8.1              
-six                1.11.0             
-tblib              1.3.2              
-terminado          0.6                
-testpath           0.3.1              
-tornado            4.5.2              
-traitlets          4.3.2              
-trollius           1.0.4              
-Twisted            17.9.0             
-u-msgpack-python   2.4.1              
-urllib3            1.22               
-w3lib              1.19.0             
-wcwidth            0.1.7              
-webencodings       0.5.1              
-Werkzeug           0.14.1             
-wheel              0.30.0             
-widgetsnbextension 3.0.8              
-wrapt              1.10.11            
-WsgiDAV            2.2.4              
-zope.interface     4.4.3              
+absl-py==0.1.10
+appnope==0.1.0
+asn1crypto==0.24.0
+astroid==1.6.1
+attrs==17.4.0
+Automat==0.6.0
+awscli==1.14.30
+bleach==1.5.0
+boto3==1.5.20
+botocore==1.8.34
+certifi==2017.11.5
+cffi==1.11.4
+chardet==3.0.4
+click==6.7
+colorama==0.3.7
+constantly==15.1.0
+coverage==4.5.1
+cryptography==2.1.4
+cssselect==1.0.3
+cycler==0.10.0
+decorator==4.1.2
+defusedxml==0.5.0
+docutils==0.14
+dpkt==1.9.1
+entrypoints==0.2.3
+enum34==1.1.6
+facebook-wda==0.2.2.dev1
+Flask==0.12.2
+Flask-Login==0.4.1
+future==0.16.0
+futures==3.1.1
+html5lib==0.9999999
+hyperlink==17.3.1
+idna==2.6
+imageio==2.2.0
+incremental==17.5.0
+ipykernel==4.7.0
+ipython==6.2.1
+ipython-genutils==0.2.0
+ipywidgets==7.0.5
+isort==4.2.15
+itsdangerous==0.24
+jedi==0.11.0
+Jinja2==2.10
+jmespath==0.9.3
+jsonschema==2.6.0
+jupyter-client==5.1.0
+jupyter-console==5.2.0
+jupyter-core==4.4.0
+Keras==2.1.3
+lazy-object-proxy==1.3.1
+Logbook==1.1.0
+lxml==4.1.1
+Markdown==2.6.11
+MarkupSafe==1.0
+matplotlib==2.1.2
+mccabe==0.6.1
+mistune==0.8.1
+mock==2.0.0
+mpyq==0.2.5
+nbconvert==5.3.1
+nbformat==4.4.0
+netifaces==0.10.6
+nose==1.3.7
+notebook==5.2.2
+numpy==1.14.0
+opencv-python==3.4.0.12
+pandas==0.22.0
+pandocfilters==1.4.2
+parsel==1.3.1
+parso==0.1.1
+pbr==3.1.1
+pexpect==4.3.0
+pickleshare==0.7.4
+Pillow==5.0.0
+portpicker==1.2.0
+prompt-toolkit==1.0.15
+protobuf==3.5.1
+ptyprocess==0.5.2
+py==1.5.2
+pyasn1==0.4.2
+pyasn1-modules==0.2.1
+pycparser==2.18
+pycurl==7.43.0.1
+PyDispatcher==2.0.5
+pygame==1.9.3
+Pygments==2.2.0
+pylint==1.8.2
+pyOpenSSL==17.5.0
+pyparsing==2.2.0
+pypcap==1.2.0
+pyquery==1.4.0
+PySC2==1.2
+pyshark==0.3.7.11
+python-dateutil==2.6.1
+pytz==2017.3
+PyYAML==3.12
+pyzmq==16.0.3
+qtconsole==4.3.1
+queuelib==1.4.2
+requests==2.18.4
+rsa==3.4.2
+s2clientprotocol==4.2.0.62347.0
+s3transfer==0.1.12
+scapy-python3==0.23
+scikit-learn==0.19.1
+scipy==1.0.0
+Scrapy==1.5.0
+selenium==3.9.0
+service-identity==17.0.0
+simplegeneric==0.8.1
+six==1.11.0
+sklearn==0.0
+tblib==1.3.2
+tensorflow==1.5.0
+tensorflow-tensorboard==1.5.0
+terminado==0.6
+testpath==0.3.1
+tornado==4.5.2
+tqdm==4.19.5
+traitlets==4.3.2
+trollius==1.0.4
+Twisted==17.9.0
+u-msgpack-python==2.4.1
+urllib3==1.22
+w3lib==1.19.0
+wcwidth==0.1.7
+webencodings==0.5.1
+websocket-client==0.47.0
+Werkzeug==0.14.1
+widgetsnbextension==3.0.8
+wrapt==1.10.11
+WsgiDAV==2.2.4
+zope.interface==4.4.3
