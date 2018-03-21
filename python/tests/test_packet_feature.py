@@ -44,7 +44,7 @@ class TestPacketFeature(unittest.TestCase):
 
     def test_create_csv(self):
         """ Create feature from a pcap file with 1 packet and assert that it exists """
-        out_data, err_data = TestPacketFeature._capture_stdout_stderr(packet_feature.generate, 1, ONE_PKT_PCAP,GENERATED_ONE_PKT_CSV)
+        out_data, err_data = TestPacketFeature._capture_stdout_stderr(packet_feature.tcp_generate, 1, ONE_PKT_PCAP,GENERATED_ONE_PKT_CSV)
 
         # check something
         self.assertTrue(filecmp.cmp(GENERATED_ONE_PKT_CSV, ONE_PKT_CSV,shallow=False))
@@ -54,7 +54,7 @@ class TestPacketFeature(unittest.TestCase):
 
     def test_stderr_output(self):
         """ If print_err is set, something gets printed on screen """
-        out_data, err_data = TestPacketFeature._capture_stdout_stderr(packet_feature.generate, 1, ONE_PKT_PCAP,GENERATED_ONE_PKT_CSV, True)
+        out_data, err_data = TestPacketFeature._capture_stdout_stderr(packet_feature.tcp_generate, 1, ONE_PKT_PCAP,GENERATED_ONE_PKT_CSV, True)
 
         # check something
         self.assertTrue(filecmp.cmp(GENERATED_ONE_PKT_CSV, ONE_PKT_CSV,shallow=False))
@@ -64,7 +64,7 @@ class TestPacketFeature(unittest.TestCase):
     def test_create_csv_file_twice(self):
         """ Create feature from a pcap file with 1 packet twice and assert that it exists and stdout should be something """
         # redirect sys.stdout to a buffer
-        out_data, err_data = TestPacketFeature._capture_stdout_stderr(packet_feature.generate, 2, ONE_PKT_PCAP,GENERATED_ONE_PKT_CSV)
+        out_data, err_data = TestPacketFeature._capture_stdout_stderr(packet_feature.tcp_generate, 2, ONE_PKT_PCAP,GENERATED_ONE_PKT_CSV)
 
         # check something
         self.assertTrue(filecmp.cmp(GENERATED_ONE_PKT_CSV, ONE_PKT_CSV,shallow=False))
