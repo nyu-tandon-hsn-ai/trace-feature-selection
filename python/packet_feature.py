@@ -32,7 +32,7 @@ def tcp_generate(trace_file_name, trace_feature_file_name, print_err=False):
 def udp_generate(trace_file_name, trace_feature_file_name, print_err=False):
     if not os.path.exists(trace_feature_file_name):
         tshark_command = subprocess.Popen(\
-            'tshark -r {input} -Y udp -T fields -e ip.src -e ip.dst -e udp.srcport -e udp.dstport -e udp.length -e frame.time_relative -e udp.stream -Eheader=y -Eseparator=, > {output}'.\
+            'tshark -r {input} -Y udp -T fields -e ip.src -e ip.dst -e udp.srcport -e udp.dstport -e udp.length -e frame.time_relative -e udp.stream -Eheader=y -Eseparator=, -Equote=d > {output}'.\
             format(input=trace_file_name, output=trace_feature_file_name),\
             shell=True,\
             stdout=subprocess.PIPE,\
