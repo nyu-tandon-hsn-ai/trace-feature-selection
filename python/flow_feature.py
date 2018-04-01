@@ -29,6 +29,9 @@ def tcp_generate(raw_trace_df,sampling_rate=1.0,upsampled=False):
 
     trace_df = raw_trace_df
     tcp_flow_df = pd.DataFrame()
+    # empty flow
+    if trace_df.shape[0] == 0:
+        return tcp_flow_df
     # upsampling
     tcp_flow_df['avg(tcp_pkt_len)'] = trace_df.groupby('tcp.stream')['tcp.len'].mean()
     tcp_flow_df['stddev(tcp_pkt_len)'] = trace_df.groupby('tcp.stream')['tcp.len'].std().fillna(-1)
@@ -79,6 +82,9 @@ def udp_generate(raw_trace_df,sampling_rate=1.0,upsampled=False):
 
     trace_df = raw_trace_df
     udp_flow_df = pd.DataFrame()
+    # empty flow
+    if trace_df.shape[0] == 0:
+        return udp_flow_df
     # upsampling
     udp_flow_df['avg(udp_pkt_len)'] = trace_df.groupby('udp.stream')['udp.length'].mean()
     udp_flow_df['stddev(udp_pkt_len)'] = trace_df.groupby('udp.stream')['udp.length'].std().fillna(-1)
