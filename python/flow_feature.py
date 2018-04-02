@@ -21,6 +21,8 @@ def tcp_generate(raw_trace_df,sampling_rate=1.0,upsampled=False):
             return {'avg('+name_pred+')':feature_avg,'std('+name_pred+')':feature_std,'min('+name_pred+')':feature_min,'max('+name_pred+')':feature_max,'count('+name_pred[0:8]+')':feature_count, 'sum('+name_pred+')':feature_sum}
         
         addrs = list(set(np.append(df['src_addr'].unique(), df['dst_addr'].unique())))
+        if len(addrs) == 1:
+            addrs.append(addrs[0])
         if len(addrs) != 2:
             raise AssertionError()
         stat = get_statistical_features(df, df['src_addr'] == addrs[0],'tcp.len','forw_pkt_len')
@@ -74,7 +76,10 @@ def udp_generate(raw_trace_df,sampling_rate=1.0,upsampled=False):
             return {'avg('+name_pred+')':feature_avg,'std('+name_pred+')':feature_std,'min('+name_pred+')':feature_min,'max('+name_pred+')':feature_max,'count('+name_pred[0:8]+')':feature_count, 'sum('+name_pred+')':feature_sum}
         
         addrs = list(set(np.append(df['src_addr'].unique(), df['dst_addr'].unique())))
+        if len(addrs) == 1:
+            addrs.append(addrs[0])
         if len(addrs) != 2:
+            print(addrs)
             raise AssertionError()
         stat = get_statistical_features(df, df['src_addr'] == addrs[0],'udp.length','forw_pkt_len')
         stat.update(get_statistical_features(df, df['src_addr'] == addrs[1],'udp.length','back_pkt_len'))
