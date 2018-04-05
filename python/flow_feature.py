@@ -14,6 +14,90 @@ def _is_valid_ipv4(ipaddress_v4):
         return False
     return True
 
+def extract_packet_tuple(record, protocol):
+    return (record['ip.src'], record[protocol + '.srcport'], record['ip.dst'], record[protocol + '.dstport'])
+
+def reverse_pkt_tuple(pkt_tuple):
+    return (pkt_tuple[2], pkt_tuple[3], pkt_tuple[0], pkt_tuple[1])
+
+def is_in(record, pcap_statistics, protocol, time_delta_threshold = None):
+    pkt_tuple = extract_packet_tuple(record, protocol)
+    reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
+    if pkt_tuple not in pcap_statistics and reversed_pkt_tuple not in pcap_statistics:
+        return False
+    else:
+        flow_list = pcap_statistics[pkt_tuple] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple]
+        last_flow = flow_list[-1]
+        return True if not time_delta_threshold else record['frame.time_relative'] - (last_flow['rel_start'] + last_flow['duration']) <= time_delta_threshold
+
+def extract_useful_info(record, protocol, len_name):
+    useful_info = {\
+        "src_ip":record['ip.src'],\
+        "src_port":record[protocol + '.srcport'],\
+        "dst_ip":record['ip.dst'],\
+        "dst_port":record[protocol + '.dstport'],\
+        "rel_start":record['frame.time_relative'],\
+        "duration":0,\
+        "pkt_count":1,\
+        "pkt_len":record[len_name],\
+        "fwd_pkt_count":1,\
+        "fwd_pkt_len":record[len_name],\
+        "bwd_pkt_count":0,\
+        "bwd_pkt_len":0,\
+        "inter_arrival_time_summed":0\
+    }
+    return useful_info
+
+def add_in_statistics(pcap_statistics, packet_tuple, record, protocol, len_name):
+    if packet_tuple not in pcap_statistics:
+        pcap_statistics[packet_tuple] = []
+    pcap_statistics[packet_tuple].append(extract_useful_info(record, protocol, len_name))
+    return pcap_statistics
+
+def update_statistics_info(pcap_statistics,pkt_tuple,record,is_forward_stream, protocol, len_name):
+    pcap_statistics[pkt_tuple][-1]['inter_arrival_time_summed'] += record['frame.time_relative'] - (pcap_statistics[pkt_tuple][-1]['rel_start'] + pcap_statistics[pkt_tuple][-1]['duration'])
+    pcap_statistics[pkt_tuple][-1]['duration'] = max(pcap_statistics[pkt_tuple][-1]['duration'], record['frame.time_relative'] - pcap_statistics[pkt_tuple][-1]['rel_start'])
+    pcap_statistics[pkt_tuple][-1]['pkt_count'] += 1
+    pcap_statistics[pkt_tuple][-1]['pkt_len'] += record[protocol + len_name]
+    if is_forward_stream:
+        pcap_statistics[pkt_tuple][-1]['fwd_pkt_count'] += 1
+        pcap_statistics[pkt_tuple][-1]['fwd_pkt_len'] += record[len_name]
+    else:
+        pcap_statistics[pkt_tuple][-1]['bwd_pkt_count'] += 1
+        pcap_statistics[pkt_tuple][-1]['bwd_pkt_len'] += record[len_name]
+    return pcap_statistics
+
+def update_statistics(pcap_statistics, pkt_tuple, record, protocol, len_name):  
+    if pkt_tuple in pcap_statistics:
+        return update_statistics_info(pcap_statistics,pkt_tuple,record,True, protocol, len_name)
+    else:
+        return update_statistics_info(pcap_statistics,reverse_pkt_tuple(pkt_tuple),record, False, protocol, len_name)
+
+def flatten_dict(pcap_statistics):
+    result_dict = []
+    for _, flow_list in pcap_statistics.items():
+        for flow in flow_list:
+            result_dict.append(flow)
+    return result_dict
+
+# TODO:
+# * stddev(pkt_len)
+# * trim to 1000 packets/flow
+def _track_flow(pcap_df, protocol):
+    pcap_statistics = {}
+    for _, row in pcap_df.iterrows():
+        pkt_tuple = extract_packet_tuple(row, protocol)
+        if not is_in(row, pcap_statistics, protocol):
+            add_in_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
+        else:
+            update_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
+    pcap_statistics = flatten_dict(pcap_statistics)
+    flow_df = pd.DataFrame(pcap_statistics)
+    flow_df['inter_arrival_time'] = flow_df['inter_arrival_time_summed'] / flow_df['pkt_count']
+    flow_df['avg(pkt_len)'] = flow_df['pkt_len'] / flow_df['pkt_count']
+    return flow_df
+    
+
 def _calculate_two_way_communication(len_name, sampling_rate, upsampled, df):
     # one-way statistics
     def get_statistical_features(df, criter, feature_name,name_pred):
