@@ -131,7 +131,7 @@ def _calculate_two_way_communication(len_name, sampling_rate, upsampled, df):
     stat['fb_ratio'] = stat['count(forw_pkt)'] / stat['count(back_pkt)'] if stat['count(back_pkt)'] > 0 else None
     return pd.Series(stat)
 
-def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, upsampled, max_count_per_flow):
+def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, upsampled, max_packets_per_flow):
     trace_df = raw_trace_df
     flow_df = pd.DataFrame()
 
@@ -149,6 +149,9 @@ def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, 
     # empty flow after filter
     if trace_df.shape[0] == 0:
         return flow_df
+    
+    # sort by start time
+    trace_df = trace_df.sort_values(by=['frame.time_relative'])
 
     # generate flow-based features
     flow_df['avg(pkt_len)'] = trace_df.groupby(stream_name)[len_name].mean()
@@ -157,8 +160,9 @@ def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, 
     flow_df['max(pkt_len)'] = trace_df.groupby(stream_name)[len_name].max()
     flow_df['tot_pkt'] = trace_df.groupby(stream_name)[len_name].count()
     flow_df['tot_byte'] = trace_df.groupby(stream_name)[len_name].sum()
-    flow_df['rel_start'] = trace_df.groupby(stream_name)[len_name].min()
-    flow_df['duration'] = trace_df.groupby(stream_name)[len_name].max() - flow_df['rel_start']
+    flow_df['rel_start'] = trace_df.groupby(stream_name)['frame.time_relative'].min()
+    flow_df['duration'] = trace_df.groupby(stream_name)['frame.time_relative'].max() - flow_df['rel_start']
+    flow_df['inter_arrival_time'] = flow_df['duration'] / flow_df['tot_pkt']
 
     # upsampling or not
     if not upsampled:
@@ -173,12 +177,12 @@ def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, 
     flow_df = pd.concat([flow_df,two_way_flow_df],axis=1)
     return flow_df
 
-def tcp_generate(raw_trace_df,sampling_rate=1.0,upsampled=False, max_count_per_flow=None):
-    return _generate_flow_features(raw_trace_df, 'tcp.stream',  'tcp.len', sampling_rate, upsampled, max_count_per_flow)
+def tcp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None):
+    return _generate_flow_features(raw_trace_df, 'tcp.stream',  'tcp.len', sampling_rate, upsampled, max_packets_per_flow)
 
 def sample_trace(raw_trace_df,sampling_rate):
     import time
     return raw_trace_df.sample(frac=sampling_rate, random_state=int(time.time()))
 
-def udp_generate(raw_trace_df,sampling_rate=1.0,upsampled=False, max_count_per_flow=None):
-    return _generate_flow_features(raw_trace_df, 'udp.stream',  'udp.length', sampling_rate, upsampled, max_count_per_flow)
+def udp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None):
+    return _generate_flow_features(raw_trace_df, 'udp.stream',  'udp.length', sampling_rate, upsampled, max_packets_per_flow)
