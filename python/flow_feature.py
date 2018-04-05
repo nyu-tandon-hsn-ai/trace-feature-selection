@@ -28,7 +28,7 @@ def is_in(record, pcap_statistics, protocol, time_delta_threshold = None):
     else:
         flow_list = pcap_statistics[pkt_tuple] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple]
         last_flow = flow_list[-1]
-        return True if not time_delta_threshold else record['frame.time_relative'] - (last_flow['rel_start'] + last_flow['duration']) <= time_delta_threshold
+        return True if not time_delta_threshold is None else record['frame.time_relative'] - (last_flow['rel_start'] + last_flow['duration']) <= time_delta_threshold
 
 def extract_useful_info(record, protocol, len_name):
     useful_info = {\
@@ -37,14 +37,22 @@ def extract_useful_info(record, protocol, len_name):
         "dst_ip":record['ip.dst'],\
         "dst_port":record[protocol + '.dstport'],\
         "rel_start":record['frame.time_relative'],\
-        "duration":0,\
-        "pkt_count":1,\
-        "pkt_len":record[len_name],\
-        "fwd_pkt_count":1,\
-        "fwd_pkt_len":record[len_name],\
-        "bwd_pkt_count":0,\
-        "bwd_pkt_len":0,\
-        "inter_arrival_time_summed":0\
+        'fwd_packets':{\
+            'pkt_len':[],\
+            'arrival_time':[]\
+        },\
+        'bwd_packets':{\
+            'pkt_len':[],\
+            'arrival_time':[]\
+        }
+        # "duration":0,\
+        # "pkt_count":1,\
+        # "pkt_len":record[len_name],\
+        # "fwd_pkt_count":1,\
+        # "fwd_pkt_len":record[len_name],\
+        # "bwd_pkt_count":0,\
+        # "bwd_pkt_len":0,\
+        # "inter_arrival_time_summed":0\
     }
     return useful_info
 
@@ -55,16 +63,12 @@ def add_in_statistics(pcap_statistics, packet_tuple, record, protocol, len_name)
     return pcap_statistics
 
 def update_statistics_info(pcap_statistics,pkt_tuple,record,is_forward_stream, protocol, len_name):
-    pcap_statistics[pkt_tuple][-1]['inter_arrival_time_summed'] += record['frame.time_relative'] - (pcap_statistics[pkt_tuple][-1]['rel_start'] + pcap_statistics[pkt_tuple][-1]['duration'])
-    pcap_statistics[pkt_tuple][-1]['duration'] = max(pcap_statistics[pkt_tuple][-1]['duration'], record['frame.time_relative'] - pcap_statistics[pkt_tuple][-1]['rel_start'])
-    pcap_statistics[pkt_tuple][-1]['pkt_count'] += 1
-    pcap_statistics[pkt_tuple][-1]['pkt_len'] += record[protocol + len_name]
     if is_forward_stream:
-        pcap_statistics[pkt_tuple][-1]['fwd_pkt_count'] += 1
-        pcap_statistics[pkt_tuple][-1]['fwd_pkt_len'] += record[len_name]
+        pcap_statistics[pkt_tuple][-1]['fwd_packets']['pkt_len'] += [record[len_name]]
+        pcap_statistics[pkt_tuple][-1]['fwd_packets']['arrival_time'] += [record['frame.time_relative']]
     else:
-        pcap_statistics[pkt_tuple][-1]['bwd_pkt_count'] += 1
-        pcap_statistics[pkt_tuple][-1]['bwd_pkt_len'] += record[len_name]
+        pcap_statistics[pkt_tuple][-1]['bwd_packets']['pkt_len'] += [record[len_name]]
+        pcap_statistics[pkt_tuple][-1]['bwd_packets']['arrival_time'] += [record['frame.time_relative']]
     return pcap_statistics
 
 def update_statistics(pcap_statistics, pkt_tuple, record, protocol, len_name):  
@@ -73,28 +77,45 @@ def update_statistics(pcap_statistics, pkt_tuple, record, protocol, len_name):
     else:
         return update_statistics_info(pcap_statistics,reverse_pkt_tuple(pkt_tuple),record, False, protocol, len_name)
 
+def calculate_flow_statistics(flow):
+    final_time = np.max(np.max(flow['fwd_packets']['arrival_time']), np.max(flow['bwd_packets']['arrival_time']))
+    flow['duration'] = final_time - flow['rel_start']
+    flow['pkt_count'] = len(flow['fwd_packets']['arrival_time']) + len(flow['bwd_packets']['arrival_time'])
+    flow['inter_arrival_time'] = flow['duration'] / (flow['pkt_count'] - 1) if flow['pkt_count'] != 1 else -1
+    flow['pkt_len'] = np.sum(flow['fwd_packets']['pkt_len']) + np.sum(flow['bwd_packets']['pkt_len'])
+    flow['avg(pkt_len)'] = flow['pkt_len'] / flow['pkt_count']
+    flow['fb_ratio'] = len(flow['fwd_packets']['pkt_len']) / len(flow['bwd_packets']['pkt_len']) if len(flow['bwd_packets']['pkt_len']) != 0 else -1
+    std_pkt_len = np.std(flow['fwd_packets']['pkt_len'] + flow['bwd_packets']['pkt_len'],ddof=1)
+    flow['stddev(pkt_len)'] = std_pkt_len if not np.isnan(std_pkt_len) else -1
+    return {'avg(pkt_len)':flow['avg(pkt_len)'], 'stddev(pkt_len)':flow['stddev(pkt_len)'], 'fb_ratio':flow['fb_ratio'], 'inter_arrival_time':flow['inter_arrival_time']}
+
 def flatten_dict(pcap_statistics):
     result_dict = []
     for _, flow_list in pcap_statistics.items():
         for flow in flow_list:
+            flow = calculate_flow_statistics(flow)
             result_dict.append(flow)
     return result_dict
+
+def last_flow_exceed_max_packets(record, pcap_statistics, protocol, max_packets_per_flow):
+    pkt_tuple = extract_packet_tuple(record, protocol)
+    reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
+    last_flow = pcap_statistics[pkt_tuple][-1] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple][-1]
+    return len(last_flow) >= max_packets_per_flow
 
 # TODO:
 # * stddev(pkt_len)
 # * trim to 1000 packets/flow
-def _track_flow(pcap_df, protocol, len_name):
+def _track_flow(pcap_df, protocol, len_name, max_packets_per_flow):
     pcap_statistics = {}
     for _, row in pcap_df.iterrows():
         pkt_tuple = extract_packet_tuple(row, protocol)
-        if not is_in(row, pcap_statistics, protocol):
+        if not is_in(row, pcap_statistics, protocol) or last_flow_exceed_max_packets(row, pcap_statistics, protocol, max_packets_per_flow):
             add_in_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
         else:
             update_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
     pcap_statistics = flatten_dict(pcap_statistics)
     flow_df = pd.DataFrame(pcap_statistics)
-    flow_df['inter_arrival_time'] = flow_df['inter_arrival_time_summed'] / flow_df['pkt_count']
-    flow_df['avg(pkt_len)'] = flow_df['pkt_len'] / flow_df['pkt_count']
     return flow_df
     
 
@@ -131,7 +152,7 @@ def _calculate_two_way_communication(len_name, sampling_rate, upsampled, df):
     stat['fb_ratio'] = stat['count(forw_pkt)'] / stat['count(back_pkt)'] if stat['count(back_pkt)'] > 0 else None
     return pd.Series(stat)
 
-def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, upsampled, max_packets_per_flow):
+def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, upsampled):
     trace_df = raw_trace_df
     flow_df = pd.DataFrame()
 
@@ -177,12 +198,20 @@ def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, 
     flow_df = pd.concat([flow_df,two_way_flow_df],axis=1)
     return flow_df
 
+# TODO
 def tcp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None):
-    return _generate_flow_features(raw_trace_df, 'tcp.stream',  'tcp.len', sampling_rate, upsampled, max_packets_per_flow)
+    if max_packets_per_flow is None:
+        return _generate_flow_features(raw_trace_df, 'tcp.stream',  'tcp.len', sampling_rate, upsampled)
+    else:
+        return
 
 def sample_trace(raw_trace_df,sampling_rate):
     import time
     return raw_trace_df.sample(frac=sampling_rate, random_state=int(time.time()))
 
+# TODO
 def udp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None):
-    return _generate_flow_features(raw_trace_df, 'udp.stream',  'udp.length', sampling_rate, upsampled, max_packets_per_flow)
+    if max_packets_per_flow is None:
+        return _generate_flow_features(raw_trace_df, 'udp.stream',  'udp.length', sampling_rate, upsampled)
+    else:
+        return
