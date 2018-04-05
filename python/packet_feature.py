@@ -4,6 +4,17 @@ import sys
 import pandas as pd
 
 '''
+    Is valid IPv4 address
+'''
+def _is_valid_ipv4(ipaddress_v4):
+    import ipaddress
+    try:
+        ipaddress.IPv4Address(ipaddress_v4)
+    except ipaddress.AddressValueError as e:
+        return False
+    return True
+
+'''
     Generate TCP packet features
 '''
 def tcp_generate(trace_file_name, trace_feature_file_name, print_err=False):
@@ -29,8 +40,8 @@ def tcp_generate(trace_file_name, trace_feature_file_name, print_err=False):
         trace_df = pd.read_csv(trace_feature_file_name)
         trace_df['src_addr'] = trace_df['ip.src'] + ":" + trace_df['tcp.srcport'].apply(str)
         trace_df['dst_addr'] = trace_df['ip.dst'] + ":" + trace_df['tcp.dstport'].apply(str)
-        trace_df['src_addr'] = trace_df.apply(lambda row:'No source address' if pd.isnull(row['src_addr']) else row['src_addr'], axis=1)
-        trace_df['src_addr'] = trace_df.apply(lambda row:'No destination address' if pd.isnull(row['dst_addr']) else row['dst_addr'], axis=1)
+        trace_df['src_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['src_addr']) or not _is_valid_ipv4(row['ip.src']) else row['src_addr'], axis=1)
+        trace_df['dst_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['dst_addr']) or not _is_valid_ipv4(row['ip.dst']) else row['dst_addr'], axis=1)
         trace_df.to_csv(trace_feature_file_name, index=False)
     else:
         print('Packet feature file already exists.')
@@ -61,8 +72,8 @@ def udp_generate(trace_file_name, trace_feature_file_name, print_err=False):
         trace_df = pd.read_csv(trace_feature_file_name)
         trace_df['src_addr'] = trace_df['ip.src'] + ":" + trace_df['udp.srcport'].apply(str)
         trace_df['dst_addr'] = trace_df['ip.dst'] + ":" + trace_df['udp.dstport'].apply(str)
-        trace_df['src_addr'] = trace_df.apply(lambda row:'No source address' if pd.isnull(row['src_addr']) else row['src_addr'], axis=1)
-        trace_df['src_addr'] = trace_df.apply(lambda row:'No destination address' if pd.isnull(row['dst_addr']) else row['dst_addr'], axis=1)
+        trace_df['src_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['src_addr']) or not _is_valid_ipv4(row['ip.src']) else row['src_addr'], axis=1)
+        trace_df['dst_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['dst_addr']) or not _is_valid_ipv4(row['ip.dst']) else row['dst_addr'], axis=1)
         trace_df.to_csv(trace_feature_file_name, index=False)
     else:
         print('Packet feature file already exists.')
