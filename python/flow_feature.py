@@ -14,7 +14,7 @@ def _is_valid_ipv4(ipaddress_v4):
         return False
     return True
 
-def calculate_two_way_communication(len_name, sampling_rate, upsampled, df):
+def _calculate_two_way_communication(len_name, sampling_rate, upsampled, df):
     # one-way statistics
     def get_statistical_features(df, criter, feature_name,name_pred):
         feature_avg = df[criter][feature_name].mean()
@@ -85,7 +85,7 @@ def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, 
         tqdm.pandas(desc='{} samp rate with upsampling'.format(sampling_rate))
 
     # generate forward and backward flow-based features
-    two_way_flow_df = trace_df.groupby(stream_name)[[len_name,'src_addr','dst_addr']].progress_apply(functools.partial(calculate_two_way_communication, len_name, sampling_rate, upsampled))
+    two_way_flow_df = trace_df.groupby(stream_name)[[len_name,'src_addr','dst_addr']].progress_apply(functools.partial(_calculate_two_way_communication, len_name, sampling_rate, upsampled))
     flow_df = pd.concat([flow_df,two_way_flow_df],axis=1)
     return flow_df
 
