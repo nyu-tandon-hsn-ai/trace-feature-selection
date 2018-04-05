@@ -3,6 +3,16 @@ import pandas as pd
 from tqdm import tqdm
 import functools
 
+'''
+    Is valid IPv4 address
+'''
+def _is_valid_ipv4(ipaddress_v4):
+    import ipaddress
+    try:
+        ipaddress.IPv4Address(ipaddress_v4)
+    except ipaddress.AddressValueError:
+        return False
+    return True
 
 def calculate_two_way_communication(len_name, sampling_rate, upsampled, df):
     # one-way statistics
@@ -41,14 +51,20 @@ def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, 
     trace_df = raw_trace_df
     flow_df = pd.DataFrame()
 
-    # empty flow
+    # empty flow at the beginning
     if trace_df.shape[0] == 0:
         return flow_df
 
-    # filter out illegal packets
-    # TODO
-    # trace_df['src_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['src_addr']) or not _is_valid_ipv4(row['ip.src']) else row['src_addr'], axis=1)
-    # trace_df['dst_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['dst_addr']) or not _is_valid_ipv4(row['ip.dst']) else row['dst_addr'], axis=1)
+    # transform illegal addresses to null
+    trace_df['src_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['src_addr']) or not _is_valid_ipv4(row['ip.src']) else row['src_addr'], axis=1)
+    trace_df['dst_addr'] = trace_df.apply(lambda row: None if pd.isnull(row['dst_addr']) or not _is_valid_ipv4(row['ip.dst']) else row['dst_addr'], axis=1)
+
+    # filter out all the null addresses
+    trace_df = trace_df[trace_df['src_addr'].notnull() & trace_df['dst_addr'].notnull()]
+
+    # empty flow after filter
+    if trace_df.shape[0] == 0:
+        return flow_df
 
     # generate flow-based features
     flow_df['avg(pkt_len)'] = trace_df.groupby(stream_name)[len_name].mean()

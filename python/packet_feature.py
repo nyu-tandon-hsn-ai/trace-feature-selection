@@ -3,17 +3,6 @@ import os
 import sys
 import pandas as pd
 
-'''
-    Is valid IPv4 address
-'''
-def _is_valid_ipv4(ipaddress_v4):
-    import ipaddress
-    try:
-        ipaddress.IPv4Address(ipaddress_v4)
-    except ipaddress.AddressValueError:
-        return False
-    return True
-
 def _tshark_extract(tshark_query_str, trace_file_name, trace_feature_file_name, print_err):
     if not os.path.exists(trace_feature_file_name):
         tshark_command = subprocess.Popen(\
