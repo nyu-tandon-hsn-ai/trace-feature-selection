@@ -83,7 +83,7 @@ def flatten_dict(pcap_statistics):
 # TODO:
 # * stddev(pkt_len)
 # * trim to 1000 packets/flow
-def _track_flow(pcap_df, protocol):
+def _track_flow(pcap_df, protocol, len_name):
     pcap_statistics = {}
     for _, row in pcap_df.iterrows():
         pkt_tuple = extract_packet_tuple(row, protocol)
