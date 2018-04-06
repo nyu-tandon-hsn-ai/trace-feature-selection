@@ -12,5 +12,6 @@ Extract TCP feature from raw trace
     1. run `jupyter nbextension enable --py --sys-prefix widgetsnbextension` before using jupyter to install visualization tools in jupyter
 1. run `jupyter notebook` to use jupyter notebook
     1. if you are extracting features for **DDoS Detection**, use [extract_ddos_feature.ipynb](./extract_ddos_feature.ipynb)
-    1. if you are extracting features for **application type detection**, use [extract_app_feature.ipynb](./extract_app_feature.ipynb)
+    1. if you are extracting **packet-based features** for **application type detection**, use [extract_app_pkt_feature.ipynb](./extract_app_pkt_feature.ipynb)
+    1. if you are extracting **flow-based features** for **application type detection**, use [extract_app_flow_feature.ipynb](./extract_app_flow_feature.ipynb)
     1. otherwise, feel free to hang around ;)
