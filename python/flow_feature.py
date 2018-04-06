@@ -107,7 +107,7 @@ def _track_flow(pcap_df, protocol, len_name, max_packets_per_flow):
         else:
             update_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
     pcap_statistics = {}
-    tqdm.pandas(desc='Max pkt per flow->{limit}'.format(limit=max_packets_per_flow))
+    tqdm.pandas(desc='{protocol} flows, max pkt per flow->{limit}'.format(protocol=protocol, limit=max_packets_per_flow))
     pcap_df.progress_apply(functools.partial(helper, pcap_statistics), axis=1)
     pcap_statistics = flatten_dict(pcap_statistics)
     flow_df = pd.DataFrame(pcap_statistics)
