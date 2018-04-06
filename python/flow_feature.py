@@ -96,7 +96,8 @@ def last_flow_exceed_max_packets(record, pcap_statistics, protocol, max_packets_
     pkt_tuple = extract_packet_tuple(record, protocol)
     reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
     last_flow = pcap_statistics[pkt_tuple][-1] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple][-1]
-    return len(last_flow) >= max_packets_per_flow
+    pkt_len = len(last_flow['fwd_packets']['pkt_len']) + len(last_flow['bwd_packets']['pkt_len'])
+    return pkt_len >= max_packets_per_flow
 
 def _track_flow(pcap_df, protocol, len_name, max_packets_per_flow):
     def helper(pcap_statistics, row):
