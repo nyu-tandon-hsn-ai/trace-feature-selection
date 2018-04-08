@@ -1,6 +1,6 @@
-# Tcp Trace Feature Selection
+# Trace Feature Selection
 ## Goal
-Extract TCP feature from raw trace
+Extract features from raw trace
 ## Requirement
 - A virtual environment with `python 3.6`.*(You could use this [link](https://conda.io/docs/user-guide/tasks/manage-environments.html) to set up a virtual environment)*
 - pip *(If you set up a virtual environment using what is mentioned above, you should be free from the problem)*
