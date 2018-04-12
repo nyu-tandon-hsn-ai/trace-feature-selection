@@ -33,7 +33,7 @@ def last_flow_exceed_time_duration(record, pcap_statistics, protocol, time_delta
     reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
     flow_list = pcap_statistics[pkt_tuple] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple]
     last_flow = flow_list[-1]
-    return record['frame.time_relative'] - last_flow['rel_start'] <= time_delta_threshold
+    return record['frame.time_relative'] - last_flow['rel_start'] > time_delta_threshold
 
 def extract_useful_info(record, protocol, len_name):
     useful_info = {\
