@@ -23,10 +23,7 @@ def reverse_pkt_tuple(pkt_tuple):
 def is_in(record, pcap_statistics, protocol):
     pkt_tuple = extract_packet_tuple(record, protocol)
     reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
-    if pkt_tuple not in pcap_statistics and reversed_pkt_tuple not in pcap_statistics:
-        return False
-    else:
-        return True
+    return pkt_tuple in pcap_statistics or reversed_pkt_tuple in pcap_statistics
 
 def last_flow_exceed_time_duration(record, pcap_statistics, protocol, time_delta_threshold):
     pkt_tuple = extract_packet_tuple(record, protocol)
@@ -111,7 +108,7 @@ def _track_flow(pcap_df, protocol, len_name, max_packets_per_flow, time_delta_th
         else:
             update_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
     pcap_statistics = {}
-    tqdm.pandas(desc='{protocol} flows, max pkt per flow->{limit}'.format(protocol=protocol, limit=max_packets_per_flow))
+    tqdm.pandas(desc='{protocol} flow, flow pkt limit->{pkt_limit}, flow duration limit->{duration_limit}'.format(protocol=protocol, pkt_limit=max_packets_per_flow, duration_limit=time_delta_threshold))
     pcap_df.progress_apply(functools.partial(helper, pcap_statistics), axis=1)
     pcap_statistics = flatten_dict(pcap_statistics)
     flow_df = pd.DataFrame(pcap_statistics)
