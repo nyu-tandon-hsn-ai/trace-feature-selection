@@ -20,16 +20,17 @@ def extract_packet_tuple(record, protocol):
 def reverse_pkt_tuple(pkt_tuple):
     return (pkt_tuple[2], pkt_tuple[3], pkt_tuple[0], pkt_tuple[1])
 
-def is_in(record, pcap_statistics, protocol, time_delta_threshold = None):
+def is_in(record, pcap_statistics, protocol):
     pkt_tuple = extract_packet_tuple(record, protocol)
     reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
-    if pkt_tuple not in pcap_statistics and reversed_pkt_tuple not in pcap_statistics:
-        return False
-    else:
-        # TODO
-        # flow_list = pcap_statistics[pkt_tuple] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple]
-        # last_flow = flow_list[-1]
-        return True if time_delta_threshold is None else None # record['frame.time_relative'] - (last_flow['rel_start'] + last_flow['duration']) <= time_delta_threshold
+    return pkt_tuple in pcap_statistics or reversed_pkt_tuple in pcap_statistics
+
+def last_flow_exceed_time_duration(record, pcap_statistics, protocol, time_delta_threshold):
+    pkt_tuple = extract_packet_tuple(record, protocol)
+    reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
+    flow_list = pcap_statistics[pkt_tuple] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple]
+    last_flow = flow_list[-1]
+    return record['frame.time_relative'] - last_flow['rel_start'] > time_delta_threshold
 
 def extract_useful_info(record, protocol, len_name):
     useful_info = {\
@@ -99,15 +100,15 @@ def last_flow_exceed_max_packets(record, pcap_statistics, protocol, max_packets_
     pkt_len = len(last_flow['fwd_packets']['pkt_len']) + len(last_flow['bwd_packets']['pkt_len'])
     return pkt_len >= max_packets_per_flow
 
-def _track_flow(pcap_df, protocol, len_name, max_packets_per_flow):
+def _track_flow(pcap_df, protocol, len_name, max_packets_per_flow, time_delta_threshold):
     def helper(pcap_statistics, row):
         pkt_tuple = extract_packet_tuple(row, protocol)
-        if not is_in(row, pcap_statistics, protocol) or last_flow_exceed_max_packets(row, pcap_statistics, protocol, max_packets_per_flow):
+        if not is_in(row, pcap_statistics, protocol) or last_flow_exceed_time_duration(row, pcap_statistics, protocol, time_delta_threshold) or last_flow_exceed_max_packets(row, pcap_statistics, protocol, max_packets_per_flow):
             add_in_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
         else:
             update_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
     pcap_statistics = {}
-    tqdm.pandas(desc='{protocol} flows, max pkt per flow->{limit}'.format(protocol=protocol, limit=max_packets_per_flow))
+    tqdm.pandas(desc='{protocol} flow, flow pkt limit->{pkt_limit}, flow duration limit->{duration_limit}'.format(protocol=protocol, pkt_limit=max_packets_per_flow, duration_limit=time_delta_threshold))
     pcap_df.progress_apply(functools.partial(helper, pcap_statistics), axis=1)
     pcap_statistics = flatten_dict(pcap_statistics)
     flow_df = pd.DataFrame(pcap_statistics)
@@ -193,18 +194,18 @@ def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, 
     flow_df = pd.concat([flow_df,two_way_flow_df],axis=1)
     return flow_df
 
-def tcp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None):
+def tcp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None, time_delta_threshold=None):
     if max_packets_per_flow is None:
         return _generate_flow_features(raw_trace_df, 'tcp.stream',  'tcp.len', sampling_rate, upsampled)
     else:
-        return _track_flow(raw_trace_df, 'tcp', 'tcp.len', max_packets_per_flow)
+        return _track_flow(raw_trace_df, 'tcp', 'tcp.len', max_packets_per_flow, time_delta_threshold)
 
 def sample_trace(raw_trace_df,sampling_rate):
     import time
     return raw_trace_df.sample(frac=sampling_rate, random_state=int(time.time()))
 
-def udp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None):
+def udp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_packets_per_flow=None, time_delta_threshold=None):
     if max_packets_per_flow is None:
         return _generate_flow_features(raw_trace_df, 'udp.stream',  'udp.length', sampling_rate, upsampled)
     else:
-        return _track_flow(raw_trace_df, 'udp', 'udp.length', max_packets_per_flow)
+        return _track_flow(raw_trace_df, 'udp', 'udp.length', max_packets_per_flow, time_delta_threshold)
