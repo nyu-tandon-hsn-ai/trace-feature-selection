@@ -33,6 +33,7 @@ def _generate_full_addr(protocol, trace_feature_file_name):
 
 def _add_tcp_pkt_len(trace_feature_file_name):
     trace_df = pd.read_csv(trace_feature_file_name)
+    trace_df['tcp.payload'] = trace_df['tcp.len']
     trace_df['tcp.len'] = trace_df['tcp.len'] + trace_df['tcp.hdr_len']
     trace_df.to_csv(trace_feature_file_name, index=False)
 
