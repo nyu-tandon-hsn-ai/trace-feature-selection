@@ -40,8 +40,11 @@ def _add_tcp_pkt_len(trace_feature_file_name):
 '''
     Generate TCP packet features
 '''
-def tcp_generate(trace_file_name, trace_feature_file_name, print_err=False):
-    _tshark_extract('tshark -r {input} -Y tcp -T fields -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e tcp.hdr_len -e tcp.len -e frame.time_relative -e tcp.seq -e tcp.ack -e tcp.flags.ack -e tcp.flags.syn -e tcp.flags.fin -e tcp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
+def tcp_generate(trace_file_name, trace_feature_file_name, print_err=False, is_cluster=False):
+    if is_cluster:
+        _tshark_extract('/share/apps/singularity/2.4.4/bin/singularity exec /beegfs/work/public/singularity/wireshark-2.4.2.img tshark -r {input} -Y tcp -T fields -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e tcp.hdr_len -e tcp.len -e frame.time_relative -e tcp.seq -e tcp.ack -e tcp.flags.ack -e tcp.flags.syn -e tcp.flags.fin -e tcp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
+    else:
+        _tshark_extract('tshark -r {input} -Y tcp -T fields -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e tcp.hdr_len -e tcp.len -e frame.time_relative -e tcp.seq -e tcp.ack -e tcp.flags.ack -e tcp.flags.syn -e tcp.flags.fin -e tcp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
     _generate_full_addr('tcp', trace_feature_file_name)
     _add_tcp_pkt_len(trace_feature_file_name)
 
