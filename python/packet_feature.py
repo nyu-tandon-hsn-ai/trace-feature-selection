@@ -31,12 +31,18 @@ def _generate_full_addr(protocol, trace_feature_file_name):
     trace_df['dst_addr'] = trace_df['ip.dst'] + ":" + trace_df[protocol + '.dstport'].apply(str)
     trace_df.to_csv(trace_feature_file_name, index=False)
 
+def _add_tcp_pkt_len(trace_feature_file_name):
+    trace_df = pd.read_csv(trace_feature_file_name)
+    trace_df['tcp.len'] = trace_df['tcp.len'] + trace_df['tcp.hdr_len']
+    trace_df.to_csv(trace_feature_file_name, index=False)
+
 '''
     Generate TCP packet features
 '''
 def tcp_generate(trace_file_name, trace_feature_file_name, print_err=False):
-    _tshark_extract('tshark -r {input} -Y tcp -T fields -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e tcp.len -e frame.time_relative -e tcp.seq -e tcp.ack -e tcp.flags.ack -e tcp.flags.syn -e tcp.flags.fin -e tcp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
+    _tshark_extract('tshark -r {input} -Y tcp -T fields -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport -e tcp.hdr_len -e tcp.len -e frame.time_relative -e tcp.seq -e tcp.ack -e tcp.flags.ack -e tcp.flags.syn -e tcp.flags.fin -e tcp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
     _generate_full_addr('tcp', trace_feature_file_name)
+    _add_tcp_pkt_len(trace_feature_file_name)
 
 '''
     Generate UDP packet features
