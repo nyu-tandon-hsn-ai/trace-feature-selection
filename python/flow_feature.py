@@ -100,13 +100,12 @@ def last_flow_exceed_max_packets(record, pcap_statistics, protocol, max_packets_
     pkt_len = len(last_flow['fwd_packets']['pkt_len']) + len(last_flow['bwd_packets']['pkt_len'])
     return pkt_len >= max_packets_per_flow
 
-# TODO
 def last_flow_exceed_byte_count(record, pcap_statistics, protocol, max_byte_per_flow):
     pkt_tuple = extract_packet_tuple(record, protocol)
     reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
     flow_list = pcap_statistics[pkt_tuple] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple]
     last_flow = flow_list[-1]
-    byte_count = np.sum(record['fwd_packets']['pkt_len']) + np.sum(record['bwd_packets']['pkt_len'])
+    byte_count = np.sum(last_flow['fwd_packets']['pkt_len']) + np.sum(last_flow['bwd_packets']['pkt_len'])
     return byte_count >= max_byte_per_flow
 
 def _track_flow(pcap_df, protocol, len_name, max_byte_per_flow=None):
@@ -117,7 +116,7 @@ def _track_flow(pcap_df, protocol, len_name, max_byte_per_flow=None):
         else:
             update_statistics(pcap_statistics, pkt_tuple, row, protocol, len_name)
     pcap_statistics = {}
-    tqdm.pandas(desc='{protocol} flow, flow pkt limit->{pkt_limit}, flow duration limit->{duration_limit}'.format(protocol=protocol, pkt_limit=max_packets_per_flow, duration_limit=time_delta_threshold))
+    tqdm.pandas(desc='{protocol} flow, flow byte limit->{flow_byte_limit}'.format(protocol=protocol, flow_byte_limit=max_byte_per_flow))
     pcap_df.progress_apply(functools.partial(helper, pcap_statistics), axis=1)
     pcap_statistics = flatten_dict(pcap_statistics)
     flow_df = pd.DataFrame(pcap_statistics)
@@ -154,7 +153,7 @@ def _calculate_two_way_communication(len_name, sampling_rate, upsampled, df):
     stat.update(get_statistical_features(df, df['src_addr'] == addrs[1],len_name,'back_pkt_len'))
 
     # calculate forward/backward packets ratio
-    stat['fb_ratio'] = stat['count(forw_pkt)'] / stat['count(back_pkt)'] if stat['count(back_pkt)'] > 0 else None
+    stat['fb_ratio'] = stat['count(forw_pkt)'] / stat['count(back_pkt)'] if stat['count(back_pkt)'] > 0 and stat['count(fwd_pkt)'] > 0 else None
     return pd.Series(stat)
 
 def _generate_flow_features(raw_trace_df, stream_name, len_name, sampling_rate, upsampled):
@@ -207,7 +206,7 @@ def tcp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_byte_per_f
     if max_byte_per_flow is None:
         return _generate_flow_features(raw_trace_df, 'tcp.stream',  'tcp.len', sampling_rate, upsampled)
     else:
-        return _track_flow(raw_trace_df, 'tcp', 'tcp.len', max_byte_per_flow=None)
+        return _track_flow(raw_trace_df, 'tcp', 'tcp.len', max_byte_per_flow=max_byte_per_flow)
 
 def sample_trace(raw_trace_df,sampling_rate):
     import time
@@ -217,4 +216,4 @@ def udp_generate(raw_trace_df,sampling_rate=1.0, upsampled=False, max_byte_per_f
     if max_byte_per_flow is None:
         return _generate_flow_features(raw_trace_df, 'udp.stream',  'udp.length', sampling_rate, upsampled)
     else:
-        return _track_flow(raw_trace_df, 'udp', 'udp.length', max_byte_per_flow=None)
+        return _track_flow(raw_trace_df, 'udp', 'udp.length', max_byte_per_flow=max_byte_per_flow)
