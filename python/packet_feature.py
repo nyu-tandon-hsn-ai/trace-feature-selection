@@ -53,7 +53,7 @@ def tcp_generate(trace_file_name, trace_feature_file_name, print_err=False, is_c
 '''
 def udp_generate(trace_file_name, trace_feature_file_name, print_err=False, is_cluster=False):
     if is_cluster:
-        _tshark_extract('tshark -r {input} -Y udp -T fields -e ip.src -e ip.dst -e udp.srcport -e udp.dstport -e udp.length -e frame.time_relative -e udp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
+        _tshark_extract('/share/apps/singularity/2.4.4/bin/singularity exec /beegfs/work/public/singularity/wireshark-2.4.2.img tshark -r {input} -Y udp -T fields -e ip.src -e ip.dst -e udp.srcport -e udp.dstport -e udp.length -e frame.time_relative -e udp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
     else:
         _tshark_extract('tshark -r {input} -Y udp -T fields -e ip.src -e ip.dst -e udp.srcport -e udp.dstport -e udp.length -e frame.time_relative -e udp.stream -Eheader=y -Eseparator=, -Equote=d > {output}', trace_file_name, trace_feature_file_name, print_err)
     _generate_full_addr('udp', trace_feature_file_name)
