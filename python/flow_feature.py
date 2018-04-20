@@ -78,9 +78,9 @@ def calculate_flow_statistics(flow):
     flow['duration'] = final_time - flow['rel_start']
     flow['pkt_count'] = len(flow['fwd_packets']['arrival_time']) + len(flow['bwd_packets']['arrival_time'])
     flow['inter_arrival_time'] = flow['duration'] / (flow['pkt_count'] - 1) if flow['pkt_count'] != 1 else -1
-    flow['pkt_len'] = np.sum(flow['fwd_packets']['pkt_len']) + np.sum(flow['bwd_packets']['pkt_len'])
-    flow['avg(pkt_len)'] = flow['pkt_len'] / flow['pkt_count']
-    flow['fb_ratio'] = len(flow['fwd_packets']['pkt_len']) / len(flow['bwd_packets']['pkt_len']) if len(flow['bwd_packets']['pkt_len']) != 0 else -1
+    flow['tot_pkt_len'] = np.sum(flow['fwd_packets']['pkt_len']) + np.sum(flow['bwd_packets']['pkt_len'])
+    flow['avg(pkt_len)'] = flow['tot_pkt_len'] / flow['pkt_count']
+    flow['fb_ratio'] = len(flow['fwd_packets']['pkt_len']) / len(flow['bwd_packets']['pkt_len']) if len(flow['bwd_packets']['pkt_len']) != 0 and len(flow['fwd_packets']['pkt_len']) != 0 else -1
     std_pkt_len = np.std(flow['fwd_packets']['pkt_len'] + flow['bwd_packets']['pkt_len'],ddof=1)
     flow['stddev(pkt_len)'] = std_pkt_len if not np.isnan(std_pkt_len) else -1
     return flow
