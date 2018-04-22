@@ -40,8 +40,8 @@ def extract_useful_info(record, protocol, len_name):
         "dst_port":record[protocol + '.dstport'],\
         "rel_start":record['frame.time_relative'],\
         'fwd_packets':{\
-            'pkt_len':[],\
-            'arrival_time':[]\
+            'pkt_len':[record['udp.length'] if protocol == 'udp' else record['tcp.len'] if protocol == 'tcp' else None],\
+            'arrival_time':[record['frame.time_relative']]\
         },\
         'bwd_packets':{\
             'pkt_len':[],\
@@ -79,6 +79,7 @@ def calculate_flow_statistics(flow):
     flow['pkt_count'] = len(flow['fwd_packets']['arrival_time']) + len(flow['bwd_packets']['arrival_time'])
     flow['inter_arrival_time'] = flow['duration'] / (flow['pkt_count'] - 1) if flow['pkt_count'] != 1 else -1
     fwd_tot_pkt_len, bwd_tot_pkt_len = np.sum(flow['fwd_packets']['pkt_len']), np.sum(flow['bwd_packets']['pkt_len'])
+    flow['fwd_pkt_len'], flow['bwd_pkt_len'] = fwd_tot_pkt_len, bwd_tot_pkt_len
     flow['tot_pkt_len'] = fwd_tot_pkt_len + bwd_tot_pkt_len
     flow['avg(pkt_len)'] = flow['tot_pkt_len'] / flow['pkt_count']
     flow['fb_ratio'] = fwd_tot_pkt_len / bwd_tot_pkt_len if fwd_tot_pkt_len != 0 and bwd_tot_pkt_len != 0 else -1
@@ -106,7 +107,8 @@ def last_flow_exceed_byte_count(record, pcap_statistics, protocol, max_byte_per_
     reversed_pkt_tuple = reverse_pkt_tuple(pkt_tuple)
     flow_list = pcap_statistics[pkt_tuple] if pkt_tuple in pcap_statistics else pcap_statistics[reversed_pkt_tuple]
     last_flow = flow_list[-1]
-    byte_count = np.sum(last_flow['fwd_packets']['pkt_len']) + np.sum(last_flow['bwd_packets']['pkt_len'])
+    byte_count = record['udp.length'] if protocol == 'udp' else record['tcp.len'] if protocol == 'tcp' else None
+    byte_count += np.sum(last_flow['fwd_packets']['pkt_len']) + np.sum(last_flow['bwd_packets']['pkt_len'])
     return byte_count >= max_byte_per_flow
 
 def _track_flow(pcap_df, protocol, len_name, max_byte_per_flow=None):
