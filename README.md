@@ -8,7 +8,7 @@ Extract features from raw trace
 ## Instructions
 1. enter your virtual environment
 1. if this is the first time you are using this
-    1. run `pip install -r python_requirement.txt` to install required libraries
+    1. run `pip install -r requirements.txt` to install required libraries
     1. run `jupyter nbextension enable --py --sys-prefix widgetsnbextension` before using jupyter to install visualization tools in jupyter
 1. run `jupyter notebook` to use jupyter notebook
     1. if you are extracting features for **DDoS Detection**, use [extract_ddos_feature.ipynb](./extract_ddos_feature.ipynb)
