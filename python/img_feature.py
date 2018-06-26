@@ -81,10 +81,10 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         feat.append(headers)
     return np.array(feat)
 
-'''
-Convert num to hex format and append to bin_array
-'''
 def _append2bin_array(bin_array, num):
+    '''
+    Convert num to hex format and append to bin_array
+    '''
     hex_val = "{0:#0{1}x}".format(num,6) # number of img in HEX
     hex_val = '0x' + hex_val[2:].zfill(8)
     bin_array.append(int('0x'+hex_val[2:][0:2],16))
@@ -93,10 +93,10 @@ def _append2bin_array(bin_array, num):
     bin_array.append(int('0x'+hex_val[2:][6:8],16))
     return bin_array
 
-'''
-Generate idx header with given img_shape
-'''
 def _generate_idx_header(img_shape):
+    '''
+    Generate idx header with given img_shape
+    '''
     header = array('B')
     header.extend([0,0,8,len(img_shape)])
 
@@ -145,10 +145,10 @@ def _save_data_labels2idx_file(data, labels, filename_prefix, train_ratio, compr
     _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx1-ubyte', compress)
     _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx1-ubyte', compress)
 
-'''
-Generate idx images
-'''
 def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress):
+    '''
+    Generate idx images
+    '''
     img_data = None
     labels = None
     
