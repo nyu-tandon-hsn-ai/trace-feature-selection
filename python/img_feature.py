@@ -2,6 +2,7 @@ import numpy as np
 from scapy.all import *
 from array import *
 import os
+from tqdm import tqdm
 
 def _ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type):
     # remove the packet information after transport layer header
@@ -46,7 +47,7 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
 
     # store all the features
     feat = []
-    for session in sessions:
+    for session in tqdm(sessions, desc='Session'):
         # it is only until max_pkts_per_flow number of trans_layer_type packets have been captured
         # will we continue to do things
         pkt_count = 0
@@ -153,7 +154,8 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
     labels = None
     
     # for each file, extract features and labels and concatenate into img_data and labels
-    for filename in filenames:
+    trans_layer_str = 'TCP' if trans_layer_type is TCP else 'UDP' if trans_layer_type is UDP else None
+    for filename in tqdm(filenames, desc=trans_layer_str):
         file_img_data = _layer_feat(filename, trans_layer_type, max_pkts_per_flow)
         if img_data is None:
             # no flow
