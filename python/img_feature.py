@@ -5,6 +5,10 @@ import os
 from tqdm import tqdm
 
 def _ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type):
+    # if IP not in pkt:
+    #     print("A packet without IP field:" + repr(pkt))
+    #     raise AssertionError()
+    
     # remove the packet information after transport layer header
     pkt[trans_layer_type].remove_payload()
 
@@ -54,7 +58,9 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         headers = []
         arri_times = []
         for pkt in sessions[session]:
-            if trans_layer_type in pkt:
+            # TODO:
+            # Ignore IPv6 for now
+            if IP in pkt and trans_layer_type in pkt:
                 headers.append(_ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type))
                 arri_times.append(pkt.time)
                 pkt_count += 1
@@ -115,7 +121,7 @@ def _save_idx_file(data, filename, compress=True):
 
 def _generate_img_file_data(data):
     img_file_data = _generate_idx_header(data.shape)
-    for img in data:
+    for img in tqdm(data, desc='Image'):
         # TODO: unflattened now
         for pixel_row in img:
             for pixel in pixel_row:
@@ -124,7 +130,7 @@ def _generate_img_file_data(data):
 
 def _generate_label_file_data(labels):
     label_file_data = _generate_idx_header(labels.shape)
-    for label in labels:
+    for label in tqdm(labels, desc='Label'):
         _append2bin_array(label_file_data, label)
     return label_file_data
 
@@ -176,6 +182,7 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
                 labels = [label]
             else:
                 labels.append(label)
+        print('{filename} {trans_layer}: {data_points}'.format(filename=filename, trans_layer=trans_layer_str, data_points=file_img_data.shape[0]))
     labels = np.array(labels)
     _save_data_labels2idx_file(img_data, labels, filename_prefix, train_ratio, compress)
 
