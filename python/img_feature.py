@@ -8,7 +8,7 @@ def _ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type):
     # if IP not in pkt:
     #     print("A packet without IP field:" + repr(pkt))
     #     raise AssertionError()
-    
+
     # remove the packet information after transport layer header
     pkt[trans_layer_type].remove_payload()
 
@@ -71,12 +71,11 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         elif pkt_count > max_pkts_per_flow:
             raise AssertionError()
 
-        # TODO: not flatten for now
         # flatten transport layer packet headers
         headers = np.array(headers)
-        # row, col = headers.shape
-        # headers = headers.flatten()
-        # assert row * col == headers.shape[0]
+        row, col = headers.shape
+        headers = headers.flatten()
+        assert row * col == headers.shape[0]
 
         # calculate inter arrival times and do normalization
         inter_arri_times = _calculate_inter_arri_times(arri_times)
@@ -122,10 +121,8 @@ def _save_idx_file(data, filename, compress=True):
 def _generate_img_file_data(data):
     img_file_data = _generate_idx_header(data.shape)
     for img in tqdm(data, desc='Image'):
-        # TODO: unflattened now
-        for pixel_row in img:
-            for pixel in pixel_row:
-                _append2bin_array(img_file_data, pixel)
+        for pixel in img:
+            _append2bin_array(img_file_data, pixel)
     return img_file_data
 
 def _generate_label_file_data(labels):
@@ -134,26 +131,33 @@ def _generate_label_file_data(labels):
         _append2bin_array(label_file_data, label)
     return label_file_data
 
-def _save_data_labels2idx_file(data, labels, filename_prefix, train_ratio, compress):
-    # necessary guanratee
-    assert data.shape[0] == labels.shape[0]
+def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
+    # shuffle
+    np.random.shuffle(data)
 
     # calculate number of samples used for training
     train_num = int(data.shape[0] * train_ratio)
 
+    # unzip
+    imgs, labels = list(zip(*data))
+    imgs, labels = np.array(imgs), np.array(labels)
+
+    print('image shape', imgs.shape)
+    print('labels', labels.shape)
+
     # generate image data for training and testing
     # and save them
-    train_img_file_data = _generate_img_file_data(data[:train_num])
-    test_img_file_data = _generate_img_file_data(data[train_num:])
-    _save_idx_file(train_img_file_data, filename_prefix+'-train'+'-images-idx3-ubyte', compress)
-    _save_idx_file(test_img_file_data, filename_prefix+'-test'+'-images-idx3-ubyte', compress)
+    train_img_file_data = _generate_img_file_data(imgs[:train_num])
+    test_img_file_data = _generate_img_file_data(imgs[train_num:])
+    _save_idx_file(train_img_file_data, filename_prefix+'-train'+'-images-idx{channels}-ubyte'.format(channels=len(imgs.shape)), compress)
+    _save_idx_file(test_img_file_data, filename_prefix+'-test'+'-images-idx{channels}-ubyte'.format(channels=len(imgs.shape)), compress)
 
     # generate labels data for training and testing
     # and save them
     train_labels_file_data = _generate_label_file_data(labels[:train_num])
     test_labels_file_data = _generate_label_file_data(labels[train_num:])
-    _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx1-ubyte', compress)
-    _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx1-ubyte', compress)
+    _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
+    _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
 
 def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress):
     '''
@@ -184,10 +188,15 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
                 labels.append(label)
         print('{filename} {trans_layer}: {data_points}'.format(filename=filename, trans_layer=trans_layer_str, data_points=file_img_data.shape[0]))
     labels = np.array(labels)
-    _save_data_labels2idx_file(img_data, labels, filename_prefix, train_ratio, compress)
+
+    # necessary guanratee
+    assert img_data.shape[0] == labels.shape[0]
+
+    data = np.array(list(zip(img_data, labels)))
+    _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress)
 
 def tcp_img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False):
-    return _generate_img(TCP, filenames, 'tcp', max_pkts_per_flow, train_ratio=train_ratio, compress=compress)
+    return _generate_img(TCP, filenames, 'tcp-{pkts}pkts'.format(pkts=max_pkts_per_flow), max_pkts_per_flow, train_ratio=train_ratio, compress=compress)
 
 def udp_img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False):
     return _generate_img(UDP, filenames, 'udp', max_pkts_per_flow, train_ratio=train_ratio, compress=compress)
