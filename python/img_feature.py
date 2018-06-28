@@ -78,7 +78,8 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
 
         # calculate inter arrival times and do normalization
         inter_arri_times = _calculate_inter_arri_times(arri_times)
-        inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
+        if len(inter_arri_times) > 0:
+            inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
 
         # add inter arrival time
         feat.append(np.append(inter_arri_times, headers))
