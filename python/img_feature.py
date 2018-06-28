@@ -38,7 +38,6 @@ def _normalize_to(data, from_low=None, from_high=None, to_low=None, to_high=None
         from_low = np.min(data)
         from_high = np.max(data)
     data = (data - from_low) / (from_high - from_low)
-    # TODO:
     # downcast here
     return (data * (to_high - to_low) + to_low).astype(np.int32)
 
@@ -80,12 +79,9 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         # calculate inter arrival times and do normalization
         inter_arri_times = _calculate_inter_arri_times(arri_times)
         inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
-        inter_arri_times = np.append([0], inter_arri_times)
 
-        # TODO:
-        # didn't add inter arrival time
-        # feat.append(np.append(inter_arri_times, headers))
-        feat.append(headers)
+        # add inter arrival time
+        feat.append(np.append(inter_arri_times, headers))
     return np.array(feat)
 
 def _append2bin_array(bin_array, num):
