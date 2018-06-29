@@ -193,7 +193,4 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
     _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress)
 
 def tcp_img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False):
-    return _generate_img(TCP, filenames, 'tcp-{pkts}pkts'.format(pkts=max_pkts_per_flow), max_pkts_per_flow, train_ratio=train_ratio, compress=compress)
-
-def udp_img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False):
-    return _generate_img(UDP, filenames, 'udp', max_pkts_per_flow, train_ratio=train_ratio, compress=compress)
+    _generate_img(TCP, filenames, 'tcp-{pkts}pkts'.format(pkts=max_pkts_per_flow), max_pkts_per_flow, train_ratio=train_ratio, compress=compress)
