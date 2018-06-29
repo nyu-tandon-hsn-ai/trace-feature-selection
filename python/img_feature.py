@@ -83,7 +83,7 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
 
         # add inter arrival time
         feat.append(np.append(inter_arri_times, headers))
-    return np.array(feat)
+    return np.array(feat, dtype=np.int32)
 
 def _append2bin_array(bin_array, num):
     '''
@@ -139,9 +139,6 @@ def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
     imgs, labels = list(zip(*data))
     imgs, labels = np.array(imgs), np.array(labels)
 
-    print('image shape', imgs.shape)
-    print('labels', labels.shape)
-
     # generate image data for training and testing
     # and save them
     train_img_file_data = _generate_img_file_data(imgs[:train_num])
@@ -156,7 +153,7 @@ def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
     _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
     _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
 
-def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress):
+def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress, label_type='vpn'):
     '''
     Generate idx images
     '''
@@ -177,7 +174,10 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
                 img_data = np.concatenate((img_data, file_img_data))
 
         # 1 for vpn and 0 for non-vpn
-        label = 1 if filename.lower().startswith('vpn') else 0
+        if label_type is 'vpn':
+            label = 1 if filename.lower().startswith('vpn') else 0
+        else:
+            raise AssertionError('Unknwon label type')
         for _ in range(file_img_data.shape[0]):
             if labels is None:
                 labels = [label]
