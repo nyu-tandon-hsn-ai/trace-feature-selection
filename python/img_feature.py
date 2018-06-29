@@ -162,6 +162,22 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
     
     # for each file, extract features and labels and concatenate into img_data and labels
     trans_layer_str = 'TCP' if trans_layer_type is TCP else 'UDP' if trans_layer_type is UDP else None
+
+    label_statistics = {}
+    label2label_name = {}
+    if label_type == 'vpn':
+        label_statistics[0] = label_statistics[1] = 0
+        label2label_name[0] = 'non-vpn'
+        label2label_name[1] = 'vpn'
+    elif label_type == 'skype':
+        label_statistics[0] = label_statistics[1] = label_statistics[2] = label_statistics[3] = 0
+        label2label_name[0] = 'chat'
+        label2label_name[1] = 'audio'
+        label2label_name[2] = 'video'
+        label2label_name[3] = 'file'
+    else:
+        raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
+
     for filename in tqdm(filenames, desc=trans_layer_str):
         file_img_data = _layer_feat(filename, trans_layer_type, max_pkts_per_flow)
         if img_data is None:
@@ -173,24 +189,59 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
             if file_img_data.shape[0] > 0:
                 img_data = np.concatenate((img_data, file_img_data))
 
+        label = None
+        base_name = os.path.basename(filename)
         # 1 for vpn and 0 for non-vpn
-        if label_type is 'vpn':
-            label = 1 if filename.lower().startswith('vpn') else 0
+        if label_type == 'vpn':
+            label = 1 if base_name.lower().startswith('vpn') else 0
+        elif label_type == 'skype':
+            if not base_name.lower().startswith('skype'):
+                raise AssertionError('{filename} not a valid Skype file'.format(filename=filename))
+
+            meta_info = [info.lower() for info in base_name[len('skype'):].split('_') if info is not '']
+            this_sub_app_type = meta_info[0]
+
+            # TODO: refactor
+            known_types = [(0, 'chat'), (1,'audio'), (2,'video'), (3,'file')]
+            # known_types = [(key, label2label_name[key]) for key in label2label_name.keys()]
+            for sub_app_label, sub_app_type in known_types:
+                if this_sub_app_type.startswith(sub_app_type):
+                    label = sub_app_label
+                    break
+            
+            if label is None:
+                raise AssertionError('Unknown application type')
         else:
-            raise AssertionError('Unknwon label type')
+            raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
+        
+        assert label is not None
+
+        label_statistics[label] += file_img_data.shape[0]
+
+        # TODO: refactor with list comprehension
         for _ in range(file_img_data.shape[0]):
             if labels is None:
                 labels = [label]
             else:
                 labels.append(label)
-        print('{filename} {trans_layer}: {data_points}'.format(filename=filename, trans_layer=trans_layer_str, data_points=file_img_data.shape[0]))
     labels = np.array(labels)
 
     # necessary guanratee
     assert img_data.shape[0] == labels.shape[0]
 
+    # print out statistics
+    print(label_type + '-> ', end='')
+    for key in label_statistics.keys():
+        print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
+    print()
+
     data = np.array(list(zip(img_data, labels)))
     _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress)
 
-def tcp_img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False):
-    _generate_img(TCP, filenames, 'tcp-{pkts}pkts'.format(pkts=max_pkts_per_flow), max_pkts_per_flow, train_ratio=train_ratio, compress=compress)
+def tcp_img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
+    _generate_img(TCP, filenames,
+                    '{pkts}pkts-tcp-subflow-{label_type}'.format(pkts=max_pkts_per_flow, label_type=label_type),
+                    max_pkts_per_flow,
+                    train_ratio=train_ratio,
+                    compress=compress,
+                    label_type=label_type)
