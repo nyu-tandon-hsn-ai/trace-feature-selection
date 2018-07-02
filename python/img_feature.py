@@ -4,14 +4,10 @@ from array import *
 import os
 from tqdm import tqdm
 
+IP2TCP_HEADER_LEN = 40
+PAYLOAD = 20
+
 def _ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type):
-    # if IP not in pkt:
-    #     print("A packet without IP field:" + repr(pkt))
-    #     raise AssertionError()
-
-    # remove the packet information after transport layer header
-    pkt[trans_layer_type].remove_payload()
-
     # TODO:
     # temporarily just omit all the options fields
     # MAYBE a better solution: fill the options field with leading/trailing 0s
@@ -19,10 +15,17 @@ def _ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type):
     if trans_layer_type is TCP:
         pkt[trans_layer_type].options = []
 
+    # remove/pad the payload in transport layer header
+    trans_bin_str = raw(pkt[trans_layer_type])
+    pkt[IP].remove_payload()
+    while len(pkt[IP]) + len(trans_bin_str) < IP2TCP_HEADER_LEN + PAYLOAD:
+        trans_bin_str = trans_bin_str + b'\x00'
+    trans_bin_str = trans_bin_str[:IP2TCP_HEADER_LEN + PAYLOAD - len(pkt[IP])]
+
     # convert binary string to bytes
     pkt_header_bin_str = raw(pkt[IP])
     pkt_header_bytes = []
-    for byte in pkt_header_bin_str:
+    for byte in pkt_header_bin_str + trans_bin_str:
         pkt_header_bytes.append(byte)
     return pkt_header_bytes
 
@@ -81,8 +84,9 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         if len(inter_arri_times) > 0:
             inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
 
-        # add inter arrival time
-        feat.append(np.append(inter_arri_times, headers))
+        # concatenate all the sub-features\
+        single_feat = np.append(inter_arri_times, headers)
+        feat.append(single_feat)
     return np.array(feat, dtype=np.int32)
 
 def _append2bin_array(bin_array, num):
