@@ -135,18 +135,26 @@ def _generate_label_file_data(labels):
 
 #TODO
 def _balance_data(data, all_labels):
-    label2img = {}
-    for label in all_labels:
-        label2img[label] = []
+    label2img = {label:[] for label in all_labels}
     for img, label in data:
         if label not in label2img:
-            raise AssertionError()
+            raise AssertionError('Data contains labels that are not in all_labels')
         else:
             label2img[label].append(img)
-    
-    for label in label2img.keys():
-        print(label, '->', len(label2img[label]))
-    return data
+    label2img = {label:np.array(imgs) for label, imgs in label2img.items()}
+
+    for label, imgs in label2img.items():
+        if imgs.shape[0] == 0:
+            raise AssertionError('No data for label {label}'.format(label=label))
+
+    min_label = reduce(lambda x,y:x if label2img[x].shape[0] < label2img[y].shape[0] else y, all_labels)
+
+    downsampled_data = []
+    for label in all_labels:
+        downsampled_imgs = label2img[label][np.random.choice(label2img[label].shape[0], label2img[min_label].shape[0], replace=False)] 
+        downsampled_labels = np.array([label for _ in range(downsampled_imgs.shape[0])])
+        downsampled_data.extend(np.array(list(zip(downsampled_imgs, downsampled_labels))))
+    return np.array(downsampled_data)
 
 def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
     # calculate number of samples used for training
@@ -246,14 +254,14 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
                     labels.append(label)
         trans_flows[trans_layer_str] += valid_flows
 
-    print(trans_flows)
+    print('raw' + str(trans_flows))
     labels = np.array(labels)
 
     # necessary guanratee
     assert img_data.shape[0] == labels.shape[0]
 
     # print out statistics
-    print(label_type + '-> ', end='')
+    print('raw ' + label_type + '-> ', end='')
     for key in label_statistics.keys():
         print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
     print()
@@ -262,6 +270,19 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
 
     # balance data
     data = _balance_data(data, label2label_name.keys())
+
+    # reset and do statistics again
+    label_statistics = {label:0 for label in label_statistics.keys()}
+    for img, label in data:
+        label_statistics[label] += 1
+    
+    # TODO
+    # refactor here
+    # print out statistics
+    print('sampled ' + label_type + '-> ', end='')
+    for key in label_statistics.keys():
+        print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
+    print()
 
     # shuffle
     np.random.shuffle(data)
