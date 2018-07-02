@@ -93,12 +93,13 @@ def _append2bin_array(bin_array, num):
     '''
     Convert num to hex format and append to bin_array
     '''
-    hex_val = "{0:#0{1}x}".format(num,6) # number of img in HEX
-    hex_val = '0x' + hex_val[2:].zfill(8)
-    bin_array.append(int('0x'+hex_val[2:][0:2],16))
-    bin_array.append(int('0x'+hex_val[2:][2:4],16))
-    bin_array.append(int('0x'+hex_val[2:][4:6],16))
-    bin_array.append(int('0x'+hex_val[2:][6:8],16))
+    hex_val = hex(num) # number of num in HEX
+    while len(hex_val[2:]) < 4:
+        hex_val = '0x' + '0' + hex_val[2:]
+    bin_array.append(int('0x'+hex_val[2],16))
+    bin_array.append(int('0x'+hex_val[3],16))
+    bin_array.append(int('0x'+hex_val[4],16))
+    bin_array.append(int('0x'+hex_val[5],16))
     return bin_array
 
 def _generate_idx_header(img_shape):
@@ -157,18 +158,16 @@ def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
     _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
     _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
 
-def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress, label_type='vpn'):
+def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress, label_type='vpn'):
     '''
     Generate idx images
     '''
     img_data = None
     labels = None
-    
-    # for each file, extract features and labels and concatenate into img_data and labels
-    trans_layer_str = 'TCP' if trans_layer_type is TCP else 'UDP' if trans_layer_type is UDP else None
 
     label_statistics = {}
     label2label_name = {}
+    trans_flows = {'TCP':0, 'UDP':0}
     if label_type == 'vpn':
         label_statistics[0] = label_statistics[1] = 0
         label2label_name[0] = 'non-vpn'
@@ -182,52 +181,60 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
     else:
         raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
 
-    for filename in tqdm(filenames, desc=trans_layer_str):
-        file_img_data = _layer_feat(filename, trans_layer_type, max_pkts_per_flow)
-        if img_data is None:
-            # no flow
-            if file_img_data.shape[0] > 0:
-                img_data = file_img_data
-        else:
-            # no flow
-            if file_img_data.shape[0] > 0:
-                img_data = np.concatenate((img_data, file_img_data))
-
-        label = None
-        base_name = os.path.basename(filename)
-        # 1 for vpn and 0 for non-vpn
-        if label_type == 'vpn':
-            label = 1 if base_name.lower().startswith('vpn') else 0
-        elif label_type == 'skype':
-            if not base_name.lower().startswith('skype'):
-                raise AssertionError('{filename} not a valid Skype file'.format(filename=filename))
-
-            meta_info = [info.lower() for info in base_name[len('skype'):].split('_') if info is not '']
-            this_sub_app_type = meta_info[0]
-
-            # TODO: refactor
-            known_types = [(0, 'chat'), (1,'audio'), (2,'video'), (3,'file')]
-            # known_types = [(key, label2label_name[key]) for key in label2label_name.keys()]
-            for sub_app_label, sub_app_type in known_types:
-                if this_sub_app_type.startswith(sub_app_type):
-                    label = sub_app_label
-                    break
-            
-            if label is None:
-                raise AssertionError('Unknown application type')
-        else:
-            raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
-        
-        assert label is not None
-
-        label_statistics[label] += file_img_data.shape[0]
-
-        # TODO: refactor with list comprehension
-        for _ in range(file_img_data.shape[0]):
-            if labels is None:
-                labels = [label]
+    for trans_layer_type in [TCP, UDP]:
+        # for each file, extract features and labels and concatenate into img_data and labels
+        trans_layer_str = 'TCP' if trans_layer_type is TCP else 'UDP' if trans_layer_type is UDP else None
+        valid_flows = 0
+        for filename in tqdm(filenames, desc=trans_layer_str):
+            file_img_data = _layer_feat(filename, trans_layer_type, max_pkts_per_flow)
+            if img_data is None:
+                # no flow
+                if file_img_data.shape[0] > 0:
+                    img_data = file_img_data
             else:
-                labels.append(label)
+                # no flow
+                if file_img_data.shape[0] > 0:
+                    img_data = np.concatenate((img_data, file_img_data))
+
+            label = None
+            base_name = os.path.basename(filename)
+            # 1 for vpn and 0 for non-vpn
+            if label_type == 'vpn':
+                label = 1 if base_name.lower().startswith('vpn') else 0
+            elif label_type == 'skype':
+                if not base_name.lower().startswith('skype'):
+                    raise AssertionError('{filename} not a valid Skype file'.format(filename=filename))
+
+                meta_info = [info.lower() for info in base_name[len('skype'):].split('_') if info is not '']
+                this_sub_app_type = meta_info[0]
+
+                # TODO: refactor
+                known_types = [(0, 'chat'), (1,'audio'), (2,'video'), (3,'file')]
+                # known_types = [(key, label2label_name[key]) for key in label2label_name.keys()]
+                for sub_app_label, sub_app_type in known_types:
+                    if this_sub_app_type.startswith(sub_app_type):
+                        label = sub_app_label
+                        break
+                
+                if label is None:
+                    raise AssertionError('Unknown application type')
+            else:
+                raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
+            
+            assert label is not None
+
+            label_statistics[label] += file_img_data.shape[0]
+            valid_flows += file_img_data.shape[0]
+
+            # TODO: refactor with list comprehension
+            for _ in range(file_img_data.shape[0]):
+                if labels is None:
+                    labels = [label]
+                else:
+                    labels.append(label)
+        trans_flows[trans_layer_str] += valid_flows
+
+    print(trans_flows)
     labels = np.array(labels)
 
     # necessary guanratee
@@ -242,9 +249,9 @@ def _generate_img(trans_layer_type, filenames, filename_prefix, max_pkts_per_flo
     data = np.array(list(zip(img_data, labels)))
     _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress)
 
-def tcp_img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
-    _generate_img(TCP, filenames,
-                    '{pkts}pkts-tcp-subflow-{label_type}'.format(pkts=max_pkts_per_flow, label_type=label_type),
+def img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
+    _generate_img(filenames,
+                    '{pkts}pkts-subflow-{label_type}'.format(pkts=max_pkts_per_flow, label_type=label_type),
                     max_pkts_per_flow,
                     train_ratio=train_ratio,
                     compress=compress,
