@@ -133,10 +133,22 @@ def _generate_label_file_data(labels):
         _append2bin_array(label_file_data, label)
     return label_file_data
 
-def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
-    # shuffle
-    np.random.shuffle(data)
+#TODO
+def _balance_data(data, all_labels):
+    label2img = {}
+    for label in all_labels:
+        label2img[label] = []
+    for img, label in data:
+        if label not in label2img:
+            raise AssertionError()
+        else:
+            label2img[label].append(img)
+    
+    for label in label2img.keys():
+        print(label, '->', len(label2img[label]))
+    return data
 
+def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
     # calculate number of samples used for training
     train_num = int(data.shape[0] * train_ratio)
 
@@ -247,6 +259,13 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
     print()
 
     data = np.array(list(zip(img_data, labels)))
+
+    # balance data
+    data = _balance_data(data, label2label_name.keys())
+
+    # shuffle
+    np.random.shuffle(data)
+
     _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress)
 
 def img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
