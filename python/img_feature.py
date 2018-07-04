@@ -258,7 +258,6 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
                 raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
             
             assert label is not None
-            print(base_name, label, label2label_name[label])
 
             label_statistics[label] += file_img_data.shape[0]
             valid_flows += file_img_data.shape[0]
