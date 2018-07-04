@@ -199,7 +199,7 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
         label2label_name[1] = 'audio'
         label2label_name[2] = 'video'
         label2label_name[3] = 'file'
-    elif label_type == 'facebook':
+    elif label_type == 'facebook' or label_type == 'hangout':
         sub_categories = ['chat', 'audio', 'video']
         for i in range(len(sub_categories)):
             label_statistics[i] = 0
@@ -276,6 +276,23 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
                 
                 if label is None:
                     raise AssertionError('Unknown facebook category type')
+            elif label_type == 'hangout':
+                sub_categories = ['chat', 'audio', 'video']
+                if base_name.startswith('hangout_'):
+                    for sub_category_label in label2label_name.keys():
+                        if base_name[len('hangout_'):].startswith(label2label_name[sub_category_label]):
+                            label = sub_category_label
+                            break
+                elif base_name.startswith('hangouts_'):
+                     for sub_category_label in label2label_name.keys():
+                        if base_name[len('hangouts_'):].startswith(label2label_name[sub_category_label]):
+                            label = sub_category_label
+                            break
+                else:
+                    raise AssertionError('{filename} not a hangout file'.format(filename=filename))
+                
+                if label is None:
+                    raise AssertionError('Unknown hangout category type')
             else:
                 raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
             
