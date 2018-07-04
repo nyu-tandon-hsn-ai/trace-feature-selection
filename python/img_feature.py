@@ -185,6 +185,7 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
     img_data = None
     labels = None
 
+    # TODO: refactor
     label_statistics = {}
     label2label_name = {}
     trans_flows = {'TCP':0, 'UDP':0}
@@ -198,6 +199,11 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
         label2label_name[1] = 'audio'
         label2label_name[2] = 'video'
         label2label_name[3] = 'file'
+    elif label_type == 'non-vpn-app':
+        app_types = ['aim', 'email', 'spotify', 'icq', 'sftp', 'scp', 'torrent', 'facebook', 'gmail', 'hangout', 'netflix', 'ftps', 'skype', 'vimeo','tor', 'voipbuster', 'youtube']
+        for i in range(len(app_types)):
+            label_statistics[i] = 0
+            label2label_name[i] = app_types[i]
     else:
         raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
 
@@ -218,7 +224,8 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
 
             label = None
             base_name = os.path.basename(filename)
-            # 1 for vpn and 0 for non-vpn
+            
+            # TODO: refactor
             if label_type == 'vpn':
                 label = 1 if base_name.lower().startswith('vpn') else 0
             elif label_type == 'skype':
@@ -238,10 +245,20 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
                 
                 if label is None:
                     raise AssertionError('Unknown application type')
+            elif label_type == 'non-vpn-app':
+                max_len = None
+                temp_label = None
+                for app_type_label in label2label_name.keys():
+                    app_type = label2label_name[app_type_label]
+                    if base_name.lower().startswith(app_type) and (temp_label is None or max_len < len(app_type)):
+                        temp_label = app_type_label
+                        max_len = len(app_type)
+                label = temp_label
             else:
                 raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
             
             assert label is not None
+            print(base_name, label, label2label_name[label])
 
             label_statistics[label] += file_img_data.shape[0]
             valid_flows += file_img_data.shape[0]
