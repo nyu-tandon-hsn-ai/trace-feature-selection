@@ -199,6 +199,11 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
         label2label_name[1] = 'audio'
         label2label_name[2] = 'video'
         label2label_name[3] = 'file'
+    elif label_type == 'facebook':
+        sub_categories = ['chat', 'audio', 'video']
+        for i in range(len(sub_categories)):
+            label_statistics[i] = 0
+            label2label_name[i] = sub_categories[i]
     elif label_type == 'non-vpn-app':
         app_types = ['aim', 'email', 'spotify', 'icq', 'sftp', 'scp', 'torrent', 'facebook', 'gmail', 'hangout', 'netflix', 'ftps', 'skype', 'vimeo','tor', 'voipbuster', 'youtube']
         for i in range(len(app_types)):
@@ -244,7 +249,7 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
                         break
                 
                 if label is None:
-                    raise AssertionError('Unknown application type')
+                    raise AssertionError('Unknown skype sub-category type')
             elif label_type == 'non-vpn-app':
                 max_len = None
                 temp_label = None
@@ -254,6 +259,23 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
                         temp_label = app_type_label
                         max_len = len(app_type)
                 label = temp_label
+            elif label_type == 'facebook':
+                sub_categories = ['chat', 'audio', 'video']
+                if base_name.startswith('facebook_'):
+                    for sub_category_label in label2label_name.keys():
+                        if base_name[len('facebook_'):].startswith(label2label_name[sub_category_label]):
+                            label = sub_category_label
+                            break
+                elif base_name.startswith('facebook'):
+                     for sub_category_label in label2label_name.keys():
+                        if base_name[len('facebook'):].startswith(label2label_name[sub_category_label]):
+                            label = sub_category_label
+                            break
+                else:
+                    raise AssertionError('{filename} not a facebook file'.format(filename=filename))
+                
+                if label is None:
+                    raise AssertionError('Unknown facebook category type')
             else:
                 raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
             
