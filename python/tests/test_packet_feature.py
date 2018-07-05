@@ -48,11 +48,6 @@ class TestPacketFeature(unittest.TestCase):
         out_data, err_data = TestPacketFeature._capture_stdout_stderr(partial(packet_feature.tcp_generate, is_cluster=IS_CLUSTER), 1, ONE_PKT_PCAP,GENERATED_ONE_PKT_CSV)
 
         # check something
-        import pandas as pd
-        test_csv=pd.read_csv(GENERATED_ONE_PKT_CSV)
-        real_csv=pd.read_csv(ONE_PKT_CSV)
-        print(test_csv)
-        print(real_csv)
         self.assertTrue(filecmp.cmp(GENERATED_ONE_PKT_CSV, ONE_PKT_CSV,shallow=False))
         self.assertTrue(out_data == 'Conversion done\n')
         self.assertTrue(err_data == '')
