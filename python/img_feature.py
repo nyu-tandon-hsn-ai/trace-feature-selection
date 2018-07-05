@@ -357,3 +357,11 @@ def img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_typ
                     train_ratio=train_ratio,
                     compress=compress,
                     label_type=label_type)
+
+def extract_and_save(trace_dir, save_path, config):
+    config.max_pkts_per_flow
+    config.train_ratio
+    config.compress
+    config.label_mapper
+    config.save_file_type
+
