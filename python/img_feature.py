@@ -84,9 +84,9 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
 
         # TODO:
         # Just ignore the corner case when all the packets arrives at the same time
-        if np.max(inter_arr_times) == np.min(inter_arr_times):
-            continue
         if len(inter_arri_times) > 0:
+            if np.max(inter_arri_times) == np.min(inter_arri_times):
+                continue
             inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
 
         # concatenate all the sub-features\
