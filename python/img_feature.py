@@ -94,20 +94,18 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         feat.append(single_feat)
     return np.array(feat, dtype=np.int32)
 
-def _append2bin_array(bin_array, num):
+def _append2bin_array(bin_array, num, byte_num=1):
     '''
     Convert num to hex format and append to bin_array
     '''
-    if num < 0:
-        raise AssertionError('num should be greater than zero, but is {num}'.format(num=num))
+    if num < 0 or num > (1 << (byte_num * 8)) - 1:
+        raise AssertionError('num should be in range 0-{max_range}, but is {num}'.format(max_range=(1 << (byte_num * 8)) - 1,num=num))
     hex_val = hex(num) # number of num in HEX
     hex_val = hex_val[2:]
-    while len(hex_val) < 8:
+    while len(hex_val) < byte_num * 8 // 4:
         hex_val = '0' + hex_val
-    bin_array.append(int('0x'+hex_val[0:2],16))
-    bin_array.append(int('0x'+hex_val[2:4],16))
-    bin_array.append(int('0x'+hex_val[4:6],16))
-    bin_array.append(int('0x'+hex_val[6:8],16))
+    for i in range(0,len(hex_val),2):
+        bin_array.append(int('0x'+hex_val[i:i+2],16))
     return bin_array
 
 def _generate_idx_header(img_shape):
@@ -118,7 +116,7 @@ def _generate_idx_header(img_shape):
     header.extend([0,0,8,len(img_shape)])
 
     for shape in img_shape:
-        _append2bin_array(header, shape)
+        _append2bin_array(header, shape, byte_num=4)
     return header
 
 def _save_idx_file(data, filename, compress=True):

@@ -17,11 +17,27 @@ def test_label(filenames, asserted_label):
     for filename in filenames:
         with open(filename,'rb') as f:
             f.read(8)
-            new_bytes = f.read(4)
+            new_bytes = f.read(1)
             while len(new_bytes) > 0:
-                label = int(new_bytes[0]) * 256 * 256 * 256 + int(new_bytes[1]) * 256 * 256 + int(new_bytes[2]) * 256 + int(new_bytes[3])
+                label = int(new_bytes[0])
                 assert label == asserted_label
-                new_bytes = f.read(4)
+                new_bytes = f.read(1)
+
+def get_label_stat(filename):
+    with open(filename,'rb') as f:
+        f.read(4)
+        new_bytes = f.read(4)
+        n = int(new_bytes[0]) * 256 * 256 * 256 + int(new_bytes[1]) * 256 * 256 + int(new_bytes[2]) * 256 + int(new_bytes[3])
+        label_stat={}
+        new_bytes = f.read(1)
+        for _ in range(n):
+            label = int(new_bytes[0])
+            if label in label_stat:
+                label_stat[label] += 1
+            else:
+                label_stat[label] = 1
+            new_bytes = f.read(1)
+    return label_stat
 
 def test_shape(filenames, asserted_shape):
     for filename in filenames:
