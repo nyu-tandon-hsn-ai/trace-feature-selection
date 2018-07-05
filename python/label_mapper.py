@@ -1,7 +1,7 @@
 from collections import defaultdict
 from copy import deepcopy
 
-class Label:
+class BasicSequentialLabelMapper:
     """ Wrapper for label-related information """
 
     def __init__(self, name, options):

@@ -5,7 +5,6 @@ from collections import defaultdict
 import os
 from copy import deepcopy
 from tqdm import tqdm
-import labels
 
 IP2TCP_HEADER_LEN = 40
 PAYLOAD = 20
