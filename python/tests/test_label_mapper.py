@@ -10,19 +10,19 @@ class TestLabelMapper(unittest.TestCase):
 
     def test_seq_label_mapper(self):
         """ Test whether SequentialLabelMapper class functions well """
-        label_mapper = SequentialLabelMapper(options=['Test1','Test2'])
+        label_mapper = SequentialLabelMapper(options=['test1','test2'])
 
-        self.assertEqual(label_mapper.id2name(0), 'Test1')
-        self.assertEqual(label_mapper.id2name(1), 'Test2')
+        self.assertEqual(label_mapper.id2name(0), 'test1')
+        self.assertEqual(label_mapper.id2name(1), 'test2')
         with self.assertRaises(AssertionError):
             label_mapper.id2name(2)
         with self.assertRaises(AssertionError):
             label_mapper.id2name(-1)
 
-        self.assertEqual(label_mapper.name2id('Test1'), 0)
-        self.assertEqual(label_mapper.name2id('Test2'), 1)
+        self.assertEqual(label_mapper.name2id('test1'), 0)
+        self.assertEqual(label_mapper.name2id('test2'), 1)
         with self.assertRaises(AssertionError) as err:
-            label_mapper.name2id('Test3')
+            label_mapper.name2id('test3')
     
 ######################################################################
 #   M A I N

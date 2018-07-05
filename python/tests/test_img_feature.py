@@ -17,10 +17,6 @@ class TestImageFeature(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_normal_run(self):
-        """ Test if the program could run without error """
-        pass
-
     def test_idx_img_shape(self):
         """ Test if the shape of the generated idx image file is consistent """
         pass

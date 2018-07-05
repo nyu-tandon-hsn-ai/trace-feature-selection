@@ -1,11 +1,15 @@
 from collections import defaultdict
 from copy import deepcopy
 
+from utils import assert_lowercase
+
+
 class BasicLabelMapper:
     """ Deal with the mapping things of labels """
 
     def __init__(self, options):
         self._options=deepcopy(options)
+        assert_lowercase(options)
         self._label_name2label_id=defaultdict()
         self._id_name_mapping(options)
 
@@ -63,3 +67,12 @@ class SequentialLabelMapper(BasicLabelMapper):
     def _id_name_mapping(self, options):
         for label_id, label_name in enumerate(self._options):
             self._label_name2label_id[label_name]=label_id
+
+class DashSeparatedLabelMapper(SequentialLabelMapper):
+    ''' '''
+
+    def _extract_label_name(self, raw_str):
+        """
+            should be overrided by sub-classes
+        """
+        raise NotImplementedError()
