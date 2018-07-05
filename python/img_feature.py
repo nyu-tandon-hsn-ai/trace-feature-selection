@@ -364,6 +364,6 @@ def extract_and_save(trace_dir, save_path, config):
     config.max_pkts_per_flow
     config.train_ratio
     config.compress
-    config.label
+    config.label_mapper
     config.save_file_type
 

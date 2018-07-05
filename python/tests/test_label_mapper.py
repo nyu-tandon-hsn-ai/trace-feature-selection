@@ -1,18 +1,16 @@
 import unittest
 
-from label_mapper import BasicSequentialLabelMapper
+from label_mapper import SequentialLabelMapper
 
 ######################################################################
 #  T E S T   C A S E S
 ######################################################################
-class TestImageFeature(unittest.TestCase):
-    """ Test Cases for Label class(es) """
+class TestLabelMapper(unittest.TestCase):
+    """ Test Cases for Label Mapper class(es) """
 
-    def test_basic_label(self):
-        """ Test whether Label class functions well """
-        label_mapper = BasicSequentialLabelMapper(name='Test', options=['Test1','Test2'])
-
-        self.assertEqual(label_mapper.name, 'Test')
+    def test_seq_label_mapper(self):
+        """ Test whether SequentialLabelMapper class functions well """
+        label_mapper = SequentialLabelMapper(options=['Test1','Test2'])
 
         self.assertEqual(label_mapper.id2name(0), 'Test1')
         self.assertEqual(label_mapper.id2name(1), 'Test2')
