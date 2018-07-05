@@ -10,9 +10,15 @@ class LabelMapper:
         self._options=deepcopy(options)
         assert_lowercase(options)
         self._label_name2label_id=defaultdict()
-        self._id_name_mapping(options)
+        self._id_name_mapping()
 
-    def _id_name_mapping(self, options):
+    def _id_name_mapping(self):
+        """
+        should be overrided by sub-classes
+        """
+        raise NotImplementedError()
+    
+    def _id2name(self, label_id):
         """
         should be overrided by sub-classes
         """
@@ -25,9 +31,7 @@ class LabelMapper:
             @return
                 a string representing the name of a Label
         """
-        if label_id < 0 or label_id >= len(self._options):
-            raise AssertionError('Illegal label id {label_id}'.format(label_id=label_id))
-        return self._options[label_id]
+        return self._id2name(label_id)
     
     def name2id(self, label_name):
         """
@@ -46,12 +50,33 @@ class SequentialLabelMapper(LabelMapper):
     def __init__(self, options):
         super().__init__(options)
 
-    def _id_name_mapping(self, options):
+    def _id_name_mapping(self):
         for label_id, label_name in enumerate(self._options):
             self._label_name2label_id[label_name]=label_id
+    
+    def _id2name(self, label_id):
+        if label_id < 0 or label_id >= len(self._options):
+            raise AssertionError(
+                'Illegal label id {label_id}, should be in range {min_range}-{max_range}'.format(
+                    min_range=0,
+                    max_range=len(self._options),
+                    label_id=label_id))
+        return self._options[label_id]
 
-class BinaryLabelMapper(SequentialLabelMapper):
+class BinaryLabelMapper(LabelMapper):
     """ Mapping the label in a sequential manner """
     
     def __init__(self, positive_option):
-        super().__init__(options=[None, positive_option])
+        super().__init__(options=[positive_option])
+        assert positive_option==self._positive_option
+    
+    def _id_name_mapping(self):
+        assert 1 == len(self._options)
+        self._positive_option=self._options[0]
+        self._label_name2label_id[None]=0
+        self._label_name2label_id[self._positive_option]=1
+    
+    def _id2name(self, label_id):
+        if label_id not in [0,1]:
+            raise AssertionError('Illegal labe id {label_id}, should be in [0,1]'.format(label_id=label_id))
+        return None if label_id == 0 else self._positive_option
