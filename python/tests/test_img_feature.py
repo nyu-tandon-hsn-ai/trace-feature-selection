@@ -19,7 +19,7 @@ def test_label(filenames, asserted_label):
             f.read(8)
             new_bytes = f.read(4)
             while len(new_bytes) > 0:
-                label = int(new_bytes[0]) * 16 * 16 * 16 + int(new_bytes[1]) * 16 * 16 + int(new_bytes[2]) * 16 + int(new_bytes[3])
+                label = int(new_bytes[0]) * 256 * 256 * 256 + int(new_bytes[1]) * 256 * 256 + int(new_bytes[2]) * 256 + int(new_bytes[3])
                 assert label == asserted_label
                 new_bytes = f.read(4)
 
@@ -28,7 +28,7 @@ def test_shape(filenames, asserted_shape):
         with open(filename,'rb') as f:
             f.read(8)
             new_bytes = f.read(4)
-            shape = int(new_bytes[0]) * 16 * 16 * 16 + int(new_bytes[1]) * 16 * 16 + int(new_bytes[2]) * 16 + int(new_bytes[3])
+            shape = int(new_bytes[0]) * 256 * 256 * 256 + int(new_bytes[1]) * 256 * 256 + int(new_bytes[2]) * 256 + int(new_bytes[3])
             assert shape == asserted_shape
 
 def test_type(path, types):
