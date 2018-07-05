@@ -81,6 +81,11 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
 
         # calculate inter arrival times and do normalization
         inter_arri_times = _calculate_inter_arri_times(arri_times)
+
+        # TODO:
+        # Just ignore the corner case when all the packets arrives at the same time
+        if np.max(inter_arr_times) == np.min(inter_arr_times):
+            continue
         if len(inter_arri_times) > 0:
             inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
 
@@ -93,13 +98,16 @@ def _append2bin_array(bin_array, num):
     '''
     Convert num to hex format and append to bin_array
     '''
+    if num < 0:
+        raise AssertionError('num should be greater than zero, but is {num}'.format(num=num))
     hex_val = hex(num) # number of num in HEX
-    while len(hex_val[2:]) < 4:
-        hex_val = '0x' + '0' + hex_val[2:]
-    bin_array.append(int('0x'+hex_val[2],16))
-    bin_array.append(int('0x'+hex_val[3],16))
-    bin_array.append(int('0x'+hex_val[4],16))
-    bin_array.append(int('0x'+hex_val[5],16))
+    hex_val = hex_val[2:]
+    while len(hex_val) < 8:
+        hex_val = '0' + hex_val
+    bin_array.append(int('0x'+hex_val[0:2],16))
+    bin_array.append(int('0x'+hex_val[2:4],16))
+    bin_array.append(int('0x'+hex_val[4:6],16))
+    bin_array.append(int('0x'+hex_val[6:8],16))
     return bin_array
 
 def _generate_idx_header(img_shape):
