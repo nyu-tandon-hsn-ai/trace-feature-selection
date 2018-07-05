@@ -14,6 +14,7 @@ class TestUtils(unittest.TestCase):
             assert_lowercase(['aA', 'bB'])
         self.assertEqual(assert_lowercase(['ac', 'bd']), None)
         self.assertEqual(assert_lowercase(['a-c', 'b-d']), None)
+        self.assertEqual(assert_lowercase([None]), None)
     
 ######################################################################
 #   M A I N

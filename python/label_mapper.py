@@ -3,8 +3,7 @@ from copy import deepcopy
 
 from utils import assert_lowercase
 
-
-class BasicLabelMapper:
+class LabelMapper:
     """ Deal with the mapping things of labels """
 
     def __init__(self, options):
@@ -40,25 +39,8 @@ class BasicLabelMapper:
         if label_name not in self._label_name2label_id.keys():
             raise AssertionError('Unknown label name {label_name}'.format(label_name=label_name))
         return self._label_name2label_id[label_name]
-    
-    def _extract_label_name(self, raw_str):
-        """
-            should be overrided by sub-classes
-        """
-        raise NotImplementedError()
 
-    def extract_label_name(self, raw_str):
-        """
-            @params
-                raw_str: extract label name from this str
-            @return
-                label name extracted from this string
-            @raise
-                AssertionError: if no label name could be extracted from this string
-        """
-        return self._extract_label_name(raw_str)
-
-class SequentialLabelMapper(BasicLabelMapper):
+class SequentialLabelMapper(LabelMapper):
     """ Mapping the label in a sequential manner """
     
     def __init__(self, options):
@@ -68,11 +50,8 @@ class SequentialLabelMapper(BasicLabelMapper):
         for label_id, label_name in enumerate(self._options):
             self._label_name2label_id[label_name]=label_id
 
-class DashSeparatedLabelMapper(SequentialLabelMapper):
-    ''' '''
-
-    def _extract_label_name(self, raw_str):
-        """
-            should be overrided by sub-classes
-        """
-        raise NotImplementedError()
+class BinaryLabelMapper(SequentialLabelMapper):
+    """ Mapping the label in a sequential manner """
+    
+    def __init__(self, positive_option):
+        super().__init__(options=[None, positive_option])
