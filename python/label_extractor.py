@@ -2,8 +2,6 @@ from copy import deepcopy
 
 import numpy as np
 
-from utils import assert_lowercase
-
 class LabelExtractor:
     """ Extract label name from specified string """
 

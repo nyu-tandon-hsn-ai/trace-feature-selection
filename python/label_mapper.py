@@ -1,14 +1,15 @@
 from collections import defaultdict
 from copy import deepcopy
 
-from utils import assert_lowercase
+from utils import assert_lowercase, assert_all_different
 
 class LabelMapper:
     """ Deal with the mapping things of labels """
 
     def __init__(self, options):
-        self._options=deepcopy(options)
+        assert_all_different(options)
         assert_lowercase(options)
+        self._options=deepcopy(options)
         self._label_name2label_id=defaultdict()
         self._id_name_mapping()
 
