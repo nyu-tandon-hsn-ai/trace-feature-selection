@@ -10,9 +10,12 @@ class TestLabelMapper(unittest.TestCase):
 
     def test_pos_label_extractor(self):
         """ Test whether StartPositionLabelExtractor class functions well """
-        label_extractor = StartPositionLabelExtractor(positions=[8,9])
+        test_positions=[len('facebook'),len('facebook_')]
+        label_extractor = StartPositionLabelExtractor(positions=test_positions)
         
-        self.assertEqual(label_extractor.positions, [9,8])
+        self.assertIsNot(label_extractor.positions, test_positions)
+        
+        self.assertEqual(label_extractor.positions, sorted(test_positions, reverse=True))
 
         self.assertEqual(label_extractor.contains_label_name('facebook_chat.pcapng', ['audio','chat']), 'chat')
         self.assertEqual(label_extractor.contains_label_name('facebookaudio.pcapng', ['video','audio']), 'audio')

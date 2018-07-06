@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 
 from utils import assert_lowercase
@@ -25,7 +27,7 @@ class StartPositionLabelExtractor(LabelExtractor):
     """ Extract label name from specified string by position """
 
     def __init__(self, positions):
-        self._positions=positions
+        self._positions=deepcopy(positions)
         self._positions.sort(reverse=True)
 
     @property
