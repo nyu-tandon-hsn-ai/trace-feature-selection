@@ -23,6 +23,8 @@ class TestLabelMapper(unittest.TestCase):
         self.assertEqual(label_mapper.name2id('test2'), 1)
         with self.assertRaises(AssertionError) as err:
             label_mapper.name2id('test3')
+        
+        self.assertEqual(label_mapper.options, ['test1','test2'])
     
     def test_bin_label_mapper(self):
         """ Test whether BinaryLabelMapper class functions well """

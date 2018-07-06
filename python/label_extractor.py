@@ -1,43 +1,43 @@
+import numpy as np
+
 from utils import assert_lowercase
 
 class LabelExtractor:
     """ Extract label name from specified string """
-    
 
-    def _extract_label_name(self, raw_str):
+    def _contains_label_name(self, raw_str, label_names):
         """
             should be overrided by sub-classes
         """
         raise NotImplementedError()
 
-    def extract_label_name(self, raw_str):
+    def contains_label_name(self, raw_str, label_names):
         """
             @params
                 raw_str: extract label name from this str
             @return
-                label name extracted from this string
-            @raise
-                AssertionError: if no label name could be extracted from this string
+                label name extracted from this string or
+                None if no such label in this string
         """
-        return self._extract_label_name(raw_str)
+        return self._contains_label_name(raw_str, label_names)
 
-class PositionLabelExtractor(LabelExtractor):
+class StartPositionLabelExtractor(LabelExtractor):
     """ Extract label name from specified string by position """
 
-    def __init__(self, pos):
-        self._pos=pos
+    def __init__(self, positions):
+        self._positions=positions
+        self._positions.sort(reverse=True)
 
     @property
-    def pos(self):
-        return self._pos
-
-class KeywordLabelExtractor(LabelExtractor):
-    """ Extract label name from specified string using keyword """
-
-    def __init__(self, keyword):
-        assert_lowercase(keyword)
-        self._keyword=keyword
+    def positions(self):
+        return self._positions
     
-    @property
-    def keyword(self):
-        return self._keyword
+    def _contains_label_name(self, raw_str, label_names):
+        res=[False for _ in range(len(label_names))]
+        lower_str=raw_str.lower()
+        for position in self._positions:
+            for i, label_name in enumerate(label_names):
+                res[i]=res[i] or lower_str[position:].startswith(label_name)
+            if any(res):
+                return label_names[np.argmax(res)]
+        return None

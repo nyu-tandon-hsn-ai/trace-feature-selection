@@ -44,6 +44,10 @@ class LabelMapper:
             raise AssertionError('Unknown label name {label_name}'.format(label_name=label_name))
         return self._label_name2label_id[label_name]
 
+    @property
+    def options(self):
+        return self._options
+
 class SequentialLabelMapper(LabelMapper):
     """ Mapping the label in a sequential manner """
     
