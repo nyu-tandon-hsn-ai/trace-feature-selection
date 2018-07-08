@@ -25,6 +25,7 @@ class StartPositionLabelExtractor(LabelExtractor):
     """ Extract label name from specified string by position """
 
     def __init__(self, positions):
+        super().__init__()
         self._positions=deepcopy(positions)
         self._positions.sort(reverse=True)
 
