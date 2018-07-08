@@ -51,7 +51,7 @@ class IdxFileSaver(DataSaver):
     
     def _flatten(self, data):
         if len(data.shape) == 0:
-            return (int(data)).to_bytes(1, byteorder='big')
+            return [int(data)]
         else:
             res = []
             for datum in data:
@@ -72,7 +72,7 @@ class IdxFileSaver(DataSaver):
             header.extend(shape.to_bytes(4, byteorder='big'))
         return header
     
-    def _transform2binary(self, data, desc):
+    def _transform2binary(self, data, desc=None):
         bin_data = array('B')
         bin_data.extend(self._generate_idx_header(data.shape))
         for datum in tqdm(data, desc):

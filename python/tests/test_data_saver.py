@@ -1,4 +1,5 @@
 import unittest
+from array import array
 
 import numpy as np
 
@@ -34,6 +35,9 @@ class TestDataSaver(unittest.TestCase):
             data_saver._generate_idx_header([0 for _ in range(256)])
         with self.assertRaises(NotImplementedError):
             data_saver._generate_idx_header([1], 10)
+        
+        self.assertEqual(data_saver._transform2binary(np.array([255 for _ in range(256)])), array('B', [0,0,8,1,0,0,1,0]+[255]*256))
+        self.assertEqual(data_saver._transform2binary(np.array([[255 for _ in range(256)] for _ in range(256)])), array('B', [0,0,8,2,0,0,1,0,0,0,1,0]+[255]*256*256))
         #TODO: other function calls
     
 ######################################################################
