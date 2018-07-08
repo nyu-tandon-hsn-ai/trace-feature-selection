@@ -24,9 +24,16 @@ class TestDataSaver(unittest.TestCase):
         data_saver = IdxFileSaver('test')
         
         self.assertEqual(data_saver.filename_prefix, 'test')
+
         self.assertEqual(data_saver._flatten(np.array([1,2,3])), [1,2,3])
         self.assertEqual(data_saver._flatten(np.array([[1,2,3],[4,5,6]])), [1,2,3,4,5,6])
 
+        self.assertEqual(data_saver._generate_idx_header([65535]), [0,0,8,1,0,0,255,255])
+        self.assertEqual(data_saver._generate_idx_header([256,65535]), [0,0,8,2,0,0,1,0,0,0,255,255])
+        with self.assertRaises(ValueError):
+            data_saver._generate_idx_header([0 for _ in range(256)])
+        with self.assertRaises(NotImplementedError):
+            data_saver._generate_idx_header([1], 10)
         #TODO: other function calls
     
 ######################################################################

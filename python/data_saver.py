@@ -62,7 +62,7 @@ class IdxFileSaver(DataSaver):
         '''
         Generate idx header with given shape
         '''
-        if len(data_shape) >= 256 or len(data_shape) < 0:
+        if len(data_shape) >= 256:
             raise ValueError('the dimension of data_shape should be in range 0-255, but {dimension} found'.format(dimension=len(data_shape)))
         if data_type != 8:
             raise NotImplementedError('Only support unsigned character type only for now')
