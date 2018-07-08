@@ -31,7 +31,7 @@ def extract_session_info(session_str):
     """
     sess_group=session_str.split()
     if len(sess_group) != 4 or sess_group[2] != '>':
-        raise AssertionError('Not a valid scapy-style session string, e.g. UDP 1.2.3.4:5 > 5.6.7.8:9')
+        raise AssertionError('Not a valid scapy-style session string, e.g. UDP 1.2.3.4:5 > 5.6.7.8:9, found {string}'.format(string=session_str))
 
     if sess_group[0] != 'TCP' and sess_group[0] != 'UDP':
         raise AssertionError('Unsupported protocol type, only for TCP or UDP now but {protocol} was found'.format(protocol=sess_group[0]))
