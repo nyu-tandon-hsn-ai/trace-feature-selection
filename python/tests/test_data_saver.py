@@ -10,11 +10,12 @@ class TestDataSaver(unittest.TestCase):
 
     def test_data_saver(self):
         """ Test whether DataSaver class functions well """
-        data_saver = DataSaver()
+        data_saver = DataSaver('test')
         
         # TODO
-        data_saver.save('nothing')
-        data_saver.load('nothing')
+        with self.assertRaises(NotImplementedError):
+            data_saver.save([1,2,3], 'nothing')
+            data_saver.load('nothing')
     
 ######################################################################
 #   M A I N
