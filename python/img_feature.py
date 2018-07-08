@@ -1,8 +1,11 @@
-import numpy as np
-from scapy.all import *
 from array import *
 import os
+
+import numpy as np
 from tqdm import tqdm
+from scapy.all import *
+
+from session_info import extract_session_info
 
 IP2TCP_HEADER_LEN = 40
 PAYLOAD = 20
@@ -73,6 +76,37 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         elif pkt_count > max_pkts_per_flow:
             raise AssertionError()
 
+        # extract session info
+        if session == 'Other':
+            assert len(sessions[session]) > 0
+            f_pkt= None
+            for pkt in sessions[session]:
+                if IP in pkt and trans_layer_type in pkt:
+                    f_pkt=pkt
+            if f_pkt is None:
+                raise AssertionError()
+            
+            trans_layer_str=None
+            if trans_layer_type is TCP:
+                trans_layer_str='TCP'
+            elif trans_layer_type is UDP:
+                trans_layer_str='UDP'
+            else:
+                raise AssertionError()
+            session='{protocol} {ip0}:{port0} > {ip1}:{port1}'.format(
+                protocol=trans_layer_str,
+                ip0=f_pkt[IP].src,
+                ip1=f_pkt[IP].dst,
+                port0=f_pkt[trans_layer_type].sport,
+                port1=f_pkt[trans_layer_type].dport
+            )
+        sess_info = extract_session_info(session)
+        sess_info_vals=[int(sess_info['is_tcp'])]
+        sess_info_vals.extend((sess_info['ip0']).to_bytes(4, byteorder='big'))
+        sess_info_vals.extend((sess_info['port0']).to_bytes(2, byteorder='big'))
+        sess_info_vals.extend((sess_info['ip1']).to_bytes(4, byteorder='big'))
+        sess_info_vals.extend((sess_info['port1']).to_bytes(2, byteorder='big'))
+
         # flatten transport layer packet headers
         headers = np.array(headers)
         row, col = headers.shape
@@ -89,8 +123,9 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
                 continue
             inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
 
-        # concatenate all the sub-features\
-        single_feat = np.append(inter_arri_times, headers)
+        # concatenate all the sub-features
+        single_feat = np.append(sess_info_vals, inter_arri_times)
+        single_feat = np.append(single_feat, headers)
         feat.append(single_feat)
     return np.array(feat, dtype=np.int32)
 
