@@ -1,5 +1,5 @@
 import unittest
-from ipaddress import ip_address
+from ipaddress import IPv4Address
 
 from session_info import extract_session_info
 
@@ -15,17 +15,17 @@ class TestSessionInfo(unittest.TestCase):
         # Test TCP session
         session_info = extract_session_info('TCP 131.202.240.87:64345 > 64.12.27.65:443')
         self.assertEqual(session_info['is_tcp'], True)
-        self.assertEqual(str(ip_address(session_info['ip0'])), '131.202.240.87')
+        self.assertEqual(str(IPv4Address(session_info['ip0'])), '131.202.240.87')
         self.assertEqual(session_info['port0'], 64345)
-        self.assertEqual(str(ip_address(session_info['ip1'])), '64.12.27.65')
+        self.assertEqual(str(IPv4Address(session_info['ip1'])), '64.12.27.65')
         self.assertEqual(session_info['port1'], 443)
 
         # Test UDP session
         session_info = extract_session_info('UDP 131.202.240.87:64761 > 224.0.0.252:5355')
         self.assertEqual(session_info['is_tcp'], False)
-        self.assertEqual(str(ip_address(session_info['ip0'])), '131.202.240.87')
+        self.assertEqual(str(IPv4Address(session_info['ip0'])), '131.202.240.87')
         self.assertEqual(session_info['port0'], 64761)
-        self.assertEqual(str(ip_address(session_info['ip1'])), '224.0.0.252')
+        self.assertEqual(str(IPv4Address(session_info['ip1'])), '224.0.0.252')
         self.assertEqual(session_info['port1'], 5355)
 
     def test_invalid_session_str(self):
@@ -45,9 +45,9 @@ class TestSessionInfo(unittest.TestCase):
         with self.assertRaises(ValueError):
             extract_session_info('TCP 131.202.253.87:64345 > 258.12.27.65:443')
         
-        with self.assertRaises(Value):
+        with self.assertRaises(ValueError):
             extract_session_info('TCP 131.202.256.87:100000 > 64.12.27.65:443')
-        with self.assertRaises(Value):
+        with self.assertRaises(ValueError):
             extract_session_info('TCP 131.202.256.87:64345 > 64.12.27.65:100000')
 
 ######################################################################
