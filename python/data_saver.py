@@ -1,53 +1,50 @@
 from array import array
+import os, errno
 
 from tqdm import tqdm
 
 class DataSaver:
-    """ Save data to other formats """
+    """ Save data to other file formats """
 
-    def __init__(self, filename_prefix):
-        self._filename_prefix=filename_prefix
+    def __init__(self, folder):
+        if os.path.exists(folder):
+            raise AssertionError('folder {folder} already exists'.format(folder=folder))
+        self._folder=folder
     
     @property
-    def filename_prefix(self):
-        return self._filename_prefix
-    
-    def _load(self, path):
-        raise NotImplementedError()
+    def folder(self):
+        return self._folder
 
-    def load(self, path):
+    def _save(self, data, filename_prefix):
+        raise NotImplementedError()
+    
+    def save(self, data, filename_prefix):
         """
-        Load data from given path
+        Save data to `self.folder` with filename prefix `filename_prefix`
 
         Parameter
         ---------
-        path: str
+        data: `numpy.ndarray`
+        filename_prefix: str
 
         Returns
         -------
-        data: `numpy.ndarray`
+        str: full pathname where the
         """
-        return self._load(path)
-
-    def _save(self, data, path):
-        raise NotImplementedError()
-    
-    def save(self, data, path):
-        """
-        Save data to given path
-
-        Parameter
-        ---------
-        data: `numpy.ndarray`
-        path: str
-        """
-        self._save(data, path)
+        if os.path.exists(self._folder):
+            raise AssertionError('folder {folder} already exists'.format(folder=self._folder))
+        return self._save(data, filename_prefix)
 
 class IdxFileSaver(DataSaver):
     """ Save data in idx format """
 
-    def __init__(self, filename_prefix):
-        super().__init__(filename_prefix)
+    def __init__(self, folder, compress_file=False):
+        super().__init__(folder)
+        self._compress_file=compress_file
+    
+    @property
+    def compress_file(self):
+        return self._compress_file
     
     def _flatten(self, data):
         if len(data.shape) == 0:
@@ -72,17 +69,36 @@ class IdxFileSaver(DataSaver):
             header.extend(shape.to_bytes(4, byteorder='big'))
         return header
     
-    def _transform2binary(self, data, desc=None):
+    def _add_header_and_convert2bin(self, data, desc=None):
         bin_data = array('B')
         bin_data.extend(self._generate_idx_header(data.shape))
         for datum in tqdm(data, desc):
             bin_data.extend(self._flatten(datum))
         return bin_data
     
-    def _load(self, path):
-        # TODO
-        pass
-    
-    def _save(self, data, path):
-        # TODO
-        pass
+    def _save(self, data, filename_prefix):
+        # make directories
+        try:
+            os.makedirs(self._folder)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise e
+
+        # concatenate filename
+        filename=filename_prefix+'-idx{channels}-ubyte'.format(channels=len(data.shape))
+
+        # concatenate filename with folder name
+        full_pathname=os.path.join(self._folder, filename)
+
+        # convert to idx-format data
+        data=self._add_header_and_convert2bin(data, desc=filename_prefix)
+
+        # open file and write data
+        with open(full_pathname, 'wb') as f:
+            data.tofile(f)
+
+        if self._compress_file is True:
+            os.system('gzip ' + full_pathname)
+            return full_pathname+'.gz'
+        else:
+            return full_pathname
