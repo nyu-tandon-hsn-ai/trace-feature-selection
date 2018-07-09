@@ -366,4 +366,7 @@ def extract_and_save(trace_dir, save_path, config):
     config.label_mapper
     config.label_extractor
     config.data_saver
+    config.obj_name
+    data=_read_data(trace_dir, config)
+    config.data_saver.save(save_path)
 
