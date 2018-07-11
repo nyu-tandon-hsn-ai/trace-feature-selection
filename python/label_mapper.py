@@ -48,6 +48,17 @@ class LabelMapper:
     @property
     def options(self):
         return self._options
+    
+    def __str__(self):
+        if len(self._options) == 0:
+            return '{}'
+        else:
+            keys=self._options
+            str_mapper='{{{key}:{val}'.format(key=keys[0], val=self.name2id(keys[0]))
+            for key in keys[1:]:
+                str_mapper+= ', {key}:{val}'.format(key=key, val=self.name2id(key))
+            str_mapper += '}'
+            return str_mapper
 
 class SequentialLabelMapper(LabelMapper):
     """ Mapping the label in a sequential manner """
@@ -85,3 +96,6 @@ class BinaryLabelMapper(LabelMapper):
         if label_id not in [0,1]:
             raise AssertionError('Illegal labe id {label_id}, should be in [0,1]'.format(label_id=label_id))
         return None if label_id == 0 else self._positive_option
+    
+    def __str__(self):
+        return '{{non-{positive}:0, {positive}:1}}'.format(positive=self._positive_option)
