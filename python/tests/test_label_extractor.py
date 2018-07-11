@@ -1,6 +1,6 @@
 import unittest
 
-from label_extractor import StartPositionLabelExtractor
+from label.extractor import StartPositionLabelExtractor
 
 ######################################################################
 #  T E S T   C A S E S

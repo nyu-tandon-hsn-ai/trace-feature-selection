@@ -1,6 +1,6 @@
 import unittest
 
-from label_mapper import SequentialLabelMapper, BinaryLabelMapper
+from label.mapper import SequentialLabelMapper, BinaryLabelMapper
 
 ######################################################################
 #  T E S T   C A S E S
