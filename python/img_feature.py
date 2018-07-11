@@ -48,6 +48,9 @@ def _normalize_to(data, from_low=None, from_high=None, to_low=None, to_high=None
     return (data * (to_high - to_low) + to_low).astype(np.int32)
 
 def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
+    # TODO?
+    if max_pkts_per_flow >= 256:
+        raise AssertionError('packet count field exceeded 1 byte long')
     # read pcap file
     pcap_file = rdpcap(filename)
 
@@ -72,7 +75,7 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
                 if pkt_count == max_pkts_per_flow:
                     break
         if pkt_count < max_pkts_per_flow:
-            continue
+            headers.extend([0] * ((max_pkts_per_flow-pkt_count) * (IP2TCP_HEADER_LEN + PAYLOAD)))
         elif pkt_count > max_pkts_per_flow:
             raise AssertionError()
 
@@ -123,8 +126,11 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
                 continue
             inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
 
+        # TODO
+        # refactor with * operator?
         # concatenate all the sub-features
-        single_feat = np.append(sess_info_vals, inter_arri_times)
+        single_feat = np.append(sess_info_vals, pkt_count)
+        single_feat = np.append(single_feat, inter_arri_times)
         single_feat = np.append(single_feat, headers)
         feat.append(single_feat)
     return np.array(feat, dtype=np.int32)
