@@ -74,9 +74,7 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
                 pkt_count += 1
                 if pkt_count == max_pkts_per_flow:
                     break
-        if pkt_count < max_pkts_per_flow:
-            headers.extend([0] * ((max_pkts_per_flow-pkt_count) * (IP2TCP_HEADER_LEN + PAYLOAD)))
-        elif pkt_count > max_pkts_per_flow:
+        if pkt_count > max_pkts_per_flow:
             raise AssertionError()
 
         # extract session info
@@ -115,6 +113,10 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         row, col = headers.shape
         headers = headers.flatten()
         assert row * col == headers.shape[0]
+
+        # append 0 to the end of headers and payloads to align
+        if pkt_count < max_pkts_per_flow:
+            headers=np.append(headers, [0] * ((max_pkts_per_flow-pkt_count) * (IP2TCP_HEADER_LEN + PAYLOAD)))
 
         # calculate inter arrival times and do normalization
         inter_arri_times = _calculate_inter_arri_times(arri_times)
