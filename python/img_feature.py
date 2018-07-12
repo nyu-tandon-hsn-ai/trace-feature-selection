@@ -74,6 +74,9 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
                 pkt_count += 1
                 if pkt_count == max_pkts_per_flow:
                     break
+        # there should be at least one packet in a flow
+        if pkt_count <= 0:
+            continue
         if pkt_count > max_pkts_per_flow:
             raise AssertionError()
 
@@ -121,12 +124,19 @@ def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
         # calculate inter arrival times and do normalization
         inter_arri_times = _calculate_inter_arri_times(arri_times)
 
-        # TODO:
-        # Just ignore the corner case when all the packets arrives at the same time
+        # 1. for flow that all packets arrived at almost the same time
+        # just let the normalized inter arrival times be 0s
+        # 2. for flows that has less than max_per_flow_pkts, just append 0s 
         if len(inter_arri_times) > 0:
             if np.max(inter_arri_times) == np.min(inter_arri_times):
-                continue
-            inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
+                inter_arri_times = np.array([0] * len(inter_arri_times))
+            else:
+                inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
+        # also deal with flows with 1 packets among other circumstances
+        if len(inter_arri_times) < max_pkts_per_flow - 1:
+            difference = max_pkts_per_flow - 1 - len(inter_arri_times)
+            inter_arri_times = np.append(inter_arri_times,[0] * difference).astype(np.int32)
+            
 
         # TODO
         # refactor with * operator?
