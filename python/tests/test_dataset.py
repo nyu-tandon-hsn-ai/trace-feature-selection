@@ -18,10 +18,10 @@ class TestDataset(unittest.TestCase):
         # independent variables
         images = [[1],[2],[3]]
         labels = [4,4,6]
-        label2imgs = {4:[[1],[2]], 6:[[3]]}
         test_times = 3
 
         # generated variables
+        label2imgs = {4:[[1],[2]], 6:[[3]]}
         data = {'images': np.array(images), 'labels': np.array(labels)}
 
         # test multiple times because of uncertainty existed in shuffle()
@@ -32,7 +32,10 @@ class TestDataset(unittest.TestCase):
             # test instance equality
             self.assertIsNot(data, shuffled_data)
 
-            # test shape
+            # test dimension equality of images and labels
+            self.assertEqual(shuffled_data['images'].shape[0], shuffled_data['labels'].shape[0])
+
+            # test dimensions of standard data
             self.assertEqual(shuffled_data['images'].shape, data['images'].shape)
             self.assertEqual(shuffled_data['labels'].shape, data['labels'].shape)
 
@@ -52,9 +55,9 @@ class TestDataset(unittest.TestCase):
         # independent variables
         images = [[1],[2],[3]]
         labels = [4,4,6]
-        self_label2imgs = {4:[[1],[2]], 6:[[3]]}
 
         # generated variables
+        self_label2imgs = {4:[[1],[2]], 6:[[3]]}
         all_labels = list(set(labels))
         data = {'images': np.array(images), 'labels': np.array(labels)}
 
@@ -98,28 +101,39 @@ class TestDataset(unittest.TestCase):
         with self.assertRaises(AssertionError):
             extract_label2imgs(data, all_labels)
     
-    #TODO: should use 2d images
     def test_balance_data(self):
         """ Test balance_data """
-        images = [1,2,3,5]
+
+        # independent variables
+        images = [[1],[2],[3],[5]]
         labels = [4,4,6,0]
         self_res_labels = [6,4,0]
+
+        # genrated variables
         all_labels = list(set(labels))
         data = {'images': np.array(images), 'labels': np.array(labels)}
-        img2label = dict(zip(images,labels))
+        label2imgs = {4:[[1],[2]], 6:[[3]], 0:[[5]]}
         test_times = 3
 
+        # multiple tests as uncertainty exists
         for _ in range(test_times):
+            # copy important data
+            copied_label2imgs = deepcopy(label2imgs)
+
+            # run tested function
             balanced_data = balance_data(data, all_labels)
 
+            # test dimension equality of images and labels
             self.assertEqual(balanced_data['images'].shape[0], balanced_data['labels'].shape[0])
 
+            # check if labels are the same
             self.assertEqual(set(balanced_data['labels']), set(labels))
             self.assertEqual(Counter(balanced_data['labels']), Counter(self_res_labels))
-            self.assertTrue(list_contained_in(balanced_data['images'], images))
-            self.assertTrue(list_contained_in(balanced_data['labels'], labels))
+
+            # test if balanced_data is subset of full data
             for img, label in zip(balanced_data['images'], balanced_data['labels']):
-                self.assertEqual(img2label[img], label)
+                self.assertIn(img, copied_label2imgs[label])
+                copied_label2imgs[label].remove(img)
     
     #TODO: should use 2d images
     def test_train_test_split(self):
