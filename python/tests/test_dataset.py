@@ -1,5 +1,6 @@
 import unittest
 from collections import Counter
+from copy import deepcopy
 
 import numpy as np
 
@@ -22,41 +23,39 @@ def list_contained_in(l1, l2):
 class TestDataset(unittest.TestCase):
     """ Test Cases for dataset """
 
+    #TODO: should use 2d images
     def test_shuffle(self):
         """ Test shuffle """
-        images = [1,2,3]
-        labels = [4,5,6]
-        img2label = dict(zip(images, labels))
+        images = [[1],[2],[3]]
+        labels = [4,4,6]
+        label2imgs = {4:[[1],[2]], 6:[[3]]}
 
-        # just test shuffle, so no duplicate image in images are allowed
         data = {'images': np.array(images), 'labels': np.array(labels)}
         test_times = 3
 
         for _ in range(test_times):
+            copied_label2imgs = deepcopy(label2imgs)
             shuffled_data = shuffle(data)
 
+            # test instance equality
             self.assertIsNot(data, shuffled_data)
-            self.assertEqual(shuffled_data['images'].shape[0], data['images'].shape[0])
-            self.assertEqual(shuffled_data['labels'].shape[0], data['labels'].shape[0])
 
-            self.assertTrue(list_contained_in(shuffled_data['images'], data['images']))
-            self.assertTrue(list_contained_in(data['images'], shuffled_data['images']))
+            # test shape
+            self.assertEqual(shuffled_data['images'].shape, data['images'].shape)
+            self.assertEqual(shuffled_data['labels'].shape, data['labels'].shape)
 
-            self.assertTrue(list_contained_in(shuffled_data['labels'], data['labels']))
-            self.assertTrue(list_contained_in(data['labels'], shuffled_data['labels']))
-
-            for key in img2label.keys():
-                self.assertIn(key, shuffled_data['images'])
-                index = np.where(shuffled_data['images'] == key)[0][0]
-                val = shuffled_data['labels'][index]
-                self.assertEqual(img2label[key], val)
+            # test one-to-one mapping
+            for img, label in zip(shuffled_data['images'], shuffled_data['labels']):
+               self.assertIn(img, copied_label2imgs[label])
+               copied_label2imgs[label].remove(img)
+            self.assertTrue(all(val == [] for val in copied_label2imgs.values()))
 
     def test_extract_label2imgs(self):
         """ Test extract_label2imgs """
-        images = [1,2,3]
+        images = [[1],[2],[3]]
         labels = [4,4,6]
         all_labels = list(set(labels))
-        self_label2imgs = {4:[1,2], 6:[3]}
+        self_label2imgs = {4:[[1],[2]], 6:[[3]]}
         
         data = {'images': np.array(images), 'labels': np.array(labels)}
 
@@ -78,6 +77,7 @@ class TestDataset(unittest.TestCase):
         with self.assertRaises(AssertionError):
             extract_label2imgs(data, all_labels)
     
+    #TODO: should use 2d images
     def test_balance_data(self):
         """ Test balance_data """
         images = [1,2,3,5]
@@ -100,6 +100,7 @@ class TestDataset(unittest.TestCase):
             for img, label in zip(balanced_data['images'], balanced_data['labels']):
                 self.assertEqual(img2label[img], label)
     
+    #TODO: should use 2d images
     def test_train_test_split(self):
         """ Test train_test_split """
         # normal occasions

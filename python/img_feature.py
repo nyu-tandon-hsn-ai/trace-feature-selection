@@ -353,7 +353,7 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
         print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
     print()
 
-    data = {'images:'img_data, 'labels':labels}
+    data = {'images':img_data, 'labels':labels}
 
     # balance data
     data = balance_data(data, label2label_name.keys())
@@ -371,7 +371,7 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
         print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
     print()
 
-    _save_data_labels2idx_file(data, label2label_name.keys(), filename_prefix, train_ratio, compress)
+    _save_data_labels2idx_file(data, list(label2label_name.keys()), filename_prefix, train_ratio, compress)
 
 def img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
     _generate_img(filenames,

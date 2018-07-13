@@ -1,6 +1,7 @@
 from functools import reduce
 
 import numpy as np
+from nose.tools import nottest
 
 #TODO: just downsampling now
 def balance_data(data, all_labels):
@@ -29,14 +30,18 @@ def balance_data(data, all_labels):
     min_label = reduce(lambda x,y:x if label2imgs[x].shape[0] < label2imgs[y].shape[0] else y, all_labels)
     min_label_num = label2imgs[min_label].shape[0]
 
-    downsampled_data = {'images':np.array([], dtype=np.float32), 'labels':np.array([], dtype=np.int32)}
+    downsampled_data = {'images':None, 'labels':np.array([], dtype=np.int32)}
     for label in all_labels:
         label_num = label2imgs[label].shape[0]
         chosen_img_indexes = np.random.choice(label_num, min_label_num, replace=False)
         downsampled_imgs = label2imgs[label][chosen_img_indexes] 
         downsampled_labels = np.array([label for _ in range(downsampled_imgs.shape[0])])
-        downsampled_data['images'] = np.append(downsampled_data['images'], downsampled_imgs)
+        if downsampled_data['images'] is None:
+            downsampled_data['images'] = downsampled_imgs
+        else:
+            downsampled_data['images'] = np.concatenate((downsampled_data['images'],downsampled_imgs))
         downsampled_data['labels'] = np.append(downsampled_data['labels'], downsampled_labels)
+    downsampled_data['images'] = np.array(downsampled_data['images'])
     return downsampled_data
 
 def extract_label2imgs(data, all_labels):
@@ -75,6 +80,7 @@ def extract_label2imgs(data, all_labels):
             raise AssertionError('No data for label {label}'.format(label=label))
     return label2imgs
 
+@nottest
 def train_test_split(data, all_labels, train_ratio):
     """
     Split training and testing data based on train_ratio and balance_train
@@ -144,7 +150,6 @@ def train_test_split(data, all_labels, train_ratio):
         test['images'] = np.append(test['images'], label2imgs[label][train_num_per_label:])
         test['labels'] = np.append(test['labels'], [label] * (label2imgs[label].shape[0] - train_num_per_label))
     return train, test
-
 
 def shuffle(data):
     """

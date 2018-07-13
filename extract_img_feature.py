@@ -26,7 +26,7 @@ if __name__ == '__main__':
     filenames = [join(path,f) for f in listdir(path) if isfile(join(path, f))]
     img(filenames,
         max_pkts_per_flow=max_pkts_per_flow,
-        train_ratio=0.8,
+        train_ratio=0.5,
         compress=True,
         label_type=label_type)
     print('Time elapsed for {pkt}-pkt-sub-flow: {duration} second(s)'.format(
