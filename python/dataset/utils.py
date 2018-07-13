@@ -29,7 +29,7 @@ def balance_data(data, all_labels):
     min_label = reduce(lambda x,y:x if label2imgs[x].shape[0] < label2imgs[y].shape[0] else y, all_labels)
     min_label_num = label2imgs[min_label].shape[0]
 
-    downsampled_data = {'images':np.array([]), 'labels':np.array([], dtype=np.int32)}
+    downsampled_data = {'images':np.array([], dtype=np.float32), 'labels':np.array([], dtype=np.int32)}
     for label in all_labels:
         label_num = label2imgs[label].shape[0]
         chosen_img_indexes = np.random.choice(label_num, min_label_num, replace=False)
@@ -117,13 +117,13 @@ def train_test_split(data, all_labels, train_ratio):
     train_num = int(data_len * train_ratio)
 
     if train_num < len(all_labels):
-        raise AssertionError('Training data point number {train_num} is less than label number {label_num}'.format(
+        raise AssertionError('Training data point number {train_num} is less than label count {label_num}'.format(
             train_num=train_num,
             label_num=len(all_labels)
         ))
 
-    train={'images':np.array([]), 'labels':np.array([])}
-    test={'images':np.array([]), 'labels':np.array([])}
+    train={'images':np.array([], dtype=np.float32), 'labels':np.array([], dtype=np.int32)}
+    test={'images':np.array([], dtype=np.float32), 'labels':np.array([], dtype=np.int32)}
 
     # calculate things
     each_label_num = train_num // len(all_labels)
