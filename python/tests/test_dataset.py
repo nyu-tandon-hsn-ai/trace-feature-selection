@@ -6,33 +6,25 @@ import numpy as np
 
 from dataset.utils import balance_data, extract_label2imgs, train_test_split, shuffle
 
-#TODO: should be tested, too
-# recommendation: move to utils module
-def list_contained_in(l1, l2):
-    """
-    Checks whether l1 is contained in l2. Will not affect the original value order in l1 and l2
-    """
-    sorted_l1 = sorted(l1)
-    sorted_l2 = sorted(l2)
-    l2_iter = iter(sorted_l2)
-    return all(item in l2_iter for item in sorted_l1)
-
 ######################################################################
 #  T E S T   C A S E S
 ######################################################################
 class TestDataset(unittest.TestCase):
     """ Test Cases for dataset """
 
-    #TODO: should use 2d images
     def test_shuffle(self):
         """ Test shuffle """
+
+        # independent variables
         images = [[1],[2],[3]]
         labels = [4,4,6]
         label2imgs = {4:[[1],[2]], 6:[[3]]}
-
-        data = {'images': np.array(images), 'labels': np.array(labels)}
         test_times = 3
 
+        # generated variables
+        data = {'images': np.array(images), 'labels': np.array(labels)}
+
+        # test multiple times because of uncertainty existed in shuffle()
         for _ in range(test_times):
             copied_label2imgs = deepcopy(label2imgs)
             shuffled_data = shuffle(data)
@@ -52,27 +44,56 @@ class TestDataset(unittest.TestCase):
 
     def test_extract_label2imgs(self):
         """ Test extract_label2imgs """
+
+        ###################
+        # Test normal cases
+        ###################
+
+        # independent variables
         images = [[1],[2],[3]]
         labels = [4,4,6]
-        all_labels = list(set(labels))
         self_label2imgs = {4:[[1],[2]], 6:[[3]]}
-        
+
+        # generated variables
+        all_labels = list(set(labels))
         data = {'images': np.array(images), 'labels': np.array(labels)}
 
+        # run tested function
         label2imgs = extract_label2imgs(data, all_labels)
+
+        # test label consistency
         self.assertEqual(set(self_label2imgs.keys()), set(labels))
         self.assertEqual(set(label2imgs.keys()), set(labels))
+
+        # test equality
         for label in set(labels):
-            self.assertTrue(sorted(self_label2imgs[label]) == sorted(label2imgs[label]))
+            for img in label2imgs[label]:
+                self.assertIn(img, self_label2imgs[label])
+                self_label2imgs[label].remove(img)
+        self.assertTrue(all(item == [] for item in self_label2imgs.values()))
+        
+        #####################
+        # Test abnormal case
+        # Unseen label
+        #####################
         
         all_labels = [4,5]
         with self.assertRaises(AssertionError):
             extract_label2imgs(data, all_labels)
         
+        #################################
+        # Test abnormal case
+        # Too many labels + unseen label
+        ################################
+        
         all_labels = [4,6,5]
         with self.assertRaises(AssertionError):
             extract_label2imgs(data, all_labels)
         
+        #####################
+        # Test abnormal case
+        # Missing label
+        #####################
         all_labels = [4]
         with self.assertRaises(AssertionError):
             extract_label2imgs(data, all_labels)
