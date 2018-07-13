@@ -1,3 +1,5 @@
+from functools import reduce
+
 import numpy as np
 
 #TODO: just downsampling now
@@ -27,14 +29,14 @@ def balance_data(data, all_labels):
     min_label = reduce(lambda x,y:x if label2imgs[x].shape[0] < label2imgs[y].shape[0] else y, all_labels)
     min_label_num = label2imgs[min_label].shape[0]
 
-    downsampled_data = {'images':np.array([]), 'labels':np.array([])}
+    downsampled_data = {'images':np.array([]), 'labels':np.array([], dtype=np.int32)}
     for label in all_labels:
         label_num = label2imgs[label].shape[0]
         chosen_img_indexes = np.random.choice(label_num, min_label_num, replace=False)
         downsampled_imgs = label2imgs[label][chosen_img_indexes] 
         downsampled_labels = np.array([label for _ in range(downsampled_imgs.shape[0])])
         downsampled_data['images'] = np.append(downsampled_data['images'], downsampled_imgs)
-        downsampled_data['labels'] = np.apppend(downsampled_data['labels'], downsampled_labels)
+        downsampled_data['labels'] = np.append(downsampled_data['labels'], downsampled_labels)
     return downsampled_data
 
 def extract_label2imgs(data, all_labels):
