@@ -32,6 +32,7 @@ class TestDataset(unittest.TestCase):
                 index = np.where(shuffled_data['images'] == key)[0][0]
                 val = shuffled_data['labels'][index]
                 self.assertEqual(img2label[key], val)
+
     def test_extract_label2imgs(self):
         """ Test dataset extract_label2imgs """
         images = [1,2,3]
@@ -46,11 +47,24 @@ class TestDataset(unittest.TestCase):
         data = {'images': np.array(images), 'labels': np.array(labels)}
 
         label2imgs = extract_label2imgs(data, all_labels)
+        self.assertEqual(set(self_label2imgs.keys()), set(labels))
         self.assertEqual(set(label2imgs.keys()), set(labels))
         for label in set(labels):
             label2imgs[label].sort()
             self_label2imgs[label].sort()
             self.assertTrue((self_label2imgs[label] == label2imgs[label]).all())
+        
+        all_labels = [4,5]
+        with self.assertRaises(AssertionError):
+            extract_label2imgs(data, all_labels)
+        
+        all_labels = [4,6,5]
+        with self.assertRaises(AssertionError):
+            extract_label2imgs(data, all_labels)
+        
+        all_labels = [4]
+        with self.assertRaises(AssertionError):
+            extract_label2imgs(data, all_labels)
 
 ######################################################################
 #   M A I N
