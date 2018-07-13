@@ -159,7 +159,6 @@ def shuffle(data):
     new shuffled data: dict
         images: `numpy.ndarray`
         labels: `numpy.ndarray`
-            
     """
     #TODO
     assert data['images'].shape[0] == data['labels'].shape[0]

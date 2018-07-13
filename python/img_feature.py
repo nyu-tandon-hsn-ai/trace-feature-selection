@@ -360,7 +360,7 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
 
     # reset and do statistics again
     label_statistics = {label:0 for label in label_statistics.keys()}
-    for img, label in data:
+    for label in data['labels']:
         label_statistics[label] += 1
     
     # TODO
