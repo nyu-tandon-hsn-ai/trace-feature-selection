@@ -6,7 +6,7 @@ from tqdm import tqdm
 from scapy.all import *
 
 from session_info import extract_session_info
-from dataset.utils import balance_data, train_test_split, shuffle
+from dataset.utils import balance_data, train_test_split
 
 IP2TCP_HEADER_LEN = 40
 PAYLOAD = 20
