@@ -1,11 +1,13 @@
 from array import *
 import os
+from collections import Counter
 
 import numpy as np
 from tqdm import tqdm
 from scapy.all import *
 
 from session_info import extract_session_info
+from dataset.utils import balance_data, train_test_split
 
 IP2TCP_HEADER_LEN = 40
 PAYLOAD = 20
@@ -192,50 +194,25 @@ def _generate_label_file_data(labels):
         _append2bin_array(label_file_data, label)
     return label_file_data
 
-#TODO
-def _balance_data(data, all_labels):
-    label2img = {label:[] for label in all_labels}
-    for img, label in data:
-        if label not in label2img:
-            raise AssertionError('Data contains labels that are not in all_labels')
-        else:
-            label2img[label].append(img)
-    label2img = {label:np.array(imgs) for label, imgs in label2img.items()}
+def _save_data_labels2idx_file(data, all_labels, filename_prefix, train_ratio, compress):
+    train, test = train_test_split(data, all_labels, train_ratio)
 
-    for label, imgs in label2img.items():
-        if imgs.shape[0] == 0:
-            raise AssertionError('No data for label {label}'.format(label=label))
-
-    min_label = reduce(lambda x,y:x if label2img[x].shape[0] < label2img[y].shape[0] else y, all_labels)
-
-    downsampled_data = []
-    for label in all_labels:
-        downsampled_imgs = label2img[label][np.random.choice(label2img[label].shape[0], label2img[min_label].shape[0], replace=False)] 
-        downsampled_labels = np.array([label for _ in range(downsampled_imgs.shape[0])])
-        downsampled_data.extend(np.array(list(zip(downsampled_imgs, downsampled_labels))))
-    return np.array(downsampled_data)
-
-def _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress):
-    # calculate number of samples used for training
-    train_num = int(data.shape[0] * train_ratio)
-
-    # unzip
-    imgs, labels = list(zip(*data))
-    imgs, labels = np.array(imgs), np.array(labels)
+    print('train ratio->', train_ratio)
+    print('train stat->', Counter(train['labels']))
 
     # generate image data for training and testing
     # and save them
-    train_img_file_data = _generate_img_file_data(imgs[:train_num])
-    test_img_file_data = _generate_img_file_data(imgs[train_num:])
-    _save_idx_file(train_img_file_data, filename_prefix+'-train'+'-images-idx{channels}-ubyte'.format(channels=len(imgs.shape)), compress)
-    _save_idx_file(test_img_file_data, filename_prefix+'-test'+'-images-idx{channels}-ubyte'.format(channels=len(imgs.shape)), compress)
+    train_img_file_data = _generate_img_file_data(train['images'])
+    test_img_file_data = _generate_img_file_data(test['images'])
+    _save_idx_file(train_img_file_data, filename_prefix+'-train'+'-images-idx{channels}-ubyte'.format(channels=len(train['images'].shape)), compress)
+    _save_idx_file(test_img_file_data, filename_prefix+'-test'+'-images-idx{channels}-ubyte'.format(channels=len(test['images'].shape)), compress)
 
     # generate labels data for training and testing
     # and save them
-    train_labels_file_data = _generate_label_file_data(labels[:train_num])
-    test_labels_file_data = _generate_label_file_data(labels[train_num:])
-    _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
-    _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx{channels}-ubyte'.format(channels=len(labels.shape)), compress)
+    train_labels_file_data = _generate_label_file_data(train['labels'])
+    test_labels_file_data = _generate_label_file_data(test['labels'])
+    _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx{channels}-ubyte'.format(channels=len(train['labels'].shape)), compress)
+    _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx{channels}-ubyte'.format(channels=len(test['labels'].shape)), compress)
 
 def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress, label_type='vpn'):
     '''
@@ -380,14 +357,14 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
         print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
     print()
 
-    data = np.array(list(zip(img_data, labels)))
+    data = {'images':img_data, 'labels':labels}
 
     # balance data
-    data = _balance_data(data, label2label_name.keys())
+    data = balance_data(data, label2label_name.keys())
 
     # reset and do statistics again
     label_statistics = {label:0 for label in label_statistics.keys()}
-    for img, label in data:
+    for label in data['labels']:
         label_statistics[label] += 1
     
     # TODO
@@ -398,10 +375,7 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
         print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
     print()
 
-    # shuffle
-    np.random.shuffle(data)
-
-    _save_data_labels2idx_file(data, filename_prefix, train_ratio, compress)
+    _save_data_labels2idx_file(data, list(label2label_name.keys()), filename_prefix, train_ratio, compress)
 
 def img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
     _generate_img(filenames,
