@@ -9,6 +9,8 @@ from data_saver import DataSaver, IdxFileSaver
 
 DATA_SAVER_TEST_DIR=os.path.join('.', 'tests', 'test_data', 'test_idx_file_saver')
 
+# TODO: should be tested, too
+# recommended included in utils
 def _read(dimensions, stream):
     if len(dimensions) == 0:
         return ord(stream.read(1))
@@ -20,6 +22,9 @@ def _read(dimensions, stream):
             res.append(_read(dimensions[1:], stream))
         return res
 
+# TODO: should be tested, too
+# recommended included in utils
+# refer to gzip etc. for uncompression
 def extract(idx_filename):
     """
     Extract information(image/labels) from idx file

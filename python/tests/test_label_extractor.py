@@ -17,9 +17,9 @@ class TestLabelMapper(unittest.TestCase):
         
         self.assertEqual(label_extractor.positions, sorted(test_positions, reverse=True))
 
-        self.assertEqual(label_extractor.contains_label_name('facebook_chat.pcapng', ['audio','chat']), 'chat')
-        self.assertEqual(label_extractor.contains_label_name('facebookaudio.pcapng', ['video','audio']), 'audio')
-        self.assertEqual(label_extractor.contains_label_name('skype_file.pcapng', ['file','audio']), None)
+        self.assertEqual(label_extractor.extract('facebook_chat.pcapng', ['audio','chat']), 'chat')
+        self.assertEqual(label_extractor.extract('facebookaudio.pcapng', ['video','audio']), 'audio')
+        self.assertEqual(label_extractor.extract('skype_file.pcapng', ['file','audio']), None)
     
 ######################################################################
 #   M A I N

@@ -5,13 +5,13 @@ import numpy as np
 class LabelExtractor:
     """ Extract label name from specified string """
 
-    def _contains_label_name(self, raw_str, label_names):
+    def _extract(self, raw_str, label_names):
         """
             should be overrided by sub-classes
         """
         raise NotImplementedError()
 
-    def contains_label_name(self, raw_str, label_names):
+    def extract(self, raw_str, label_names):
         """
             @params
                 raw_str: extract label name from this str
@@ -19,7 +19,7 @@ class LabelExtractor:
                 label name extracted from this string or
                 None if no such label in this string
         """
-        return self._contains_label_name(raw_str, label_names)
+        return self._extract(raw_str, label_names)
 
 class StartPositionLabelExtractor(LabelExtractor):
     """ Extract label name from specified string by position """
@@ -33,7 +33,7 @@ class StartPositionLabelExtractor(LabelExtractor):
     def positions(self):
         return self._positions
     
-    def _contains_label_name(self, raw_str, label_names):
+    def _extract(self, raw_str, label_names):
         res=[False for _ in range(len(label_names))]
         lower_str=raw_str.lower()
         for position in self._positions:

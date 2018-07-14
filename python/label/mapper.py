@@ -79,23 +79,12 @@ class SequentialLabelMapper(LabelMapper):
                     label_id=label_id))
         return self._options[label_id]
 
-class BinaryLabelMapper(LabelMapper):
+class BinaryLabelMapper(SequentialLabelMapper):
     """ Mapping the label in a sequential manner """
     
     def __init__(self, positive_option):
-        super().__init__(options=[positive_option])
-        assert positive_option==self._positive_option
+        super().__init__(options=['non-'+positive_option, positive_option])
     
     def _id_name_mapping(self):
-        assert 1 == len(self._options)
-        self._positive_option=self._options[0]
+        super()._id_name_mapping()
         self._label_name2label_id[None]=0
-        self._label_name2label_id[self._positive_option]=1
-    
-    def _id2name(self, label_id):
-        if label_id not in [0,1]:
-            raise AssertionError('Illegal labe id {label_id}, should be in [0,1]'.format(label_id=label_id))
-        return None if label_id == 0 else self._positive_option
-    
-    def __str__(self):
-        return '{{non-{positive}:0, {positive}:1}}'.format(positive=self._positive_option)

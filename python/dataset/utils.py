@@ -133,7 +133,7 @@ def train_test_split(data, all_labels, train_ratio):
 
     # calculate things
     each_label_num = train_num // len(all_labels)
-    labels_with_one_more = np.random.choice(all_labels, train_num % len(all_labels))
+    labels_with_one_more = np.random.choice(all_labels, train_num % len(all_labels), replace=False)
 
     # balance training data
     for label in all_labels:

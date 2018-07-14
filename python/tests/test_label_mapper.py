@@ -39,7 +39,7 @@ class TestLabelMapper(unittest.TestCase):
         self.assertEqual(str(label_mapper), '{{{negative_option}:0, {positive_option}:1}}'.format(
             negative_option='non-'+positive_option, positive_option=positive_option))
 
-        self.assertEqual(label_mapper.id2name(0), None)
+        self.assertEqual(label_mapper.id2name(0), 'non-'+positive_option)
         self.assertEqual(label_mapper.id2name(1), positive_option)
         with self.assertRaises(AssertionError):
             label_mapper.id2name(2)
@@ -47,6 +47,7 @@ class TestLabelMapper(unittest.TestCase):
             label_mapper.id2name(-1)
 
         self.assertEqual(label_mapper.name2id(None), 0)
+        self.assertEqual(label_mapper.name2id('non-'+positive_option), 0)
         self.assertEqual(label_mapper.name2id(positive_option), 1)
         with self.assertRaises(AssertionError):
             label_mapper.name2id('test-again')

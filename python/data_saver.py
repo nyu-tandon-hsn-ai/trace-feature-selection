@@ -7,8 +7,6 @@ class DataSaver:
     """ Save data to other file formats """
 
     def __init__(self, folder):
-        if os.path.exists(folder):
-            raise AssertionError('folder {folder} already exists'.format(folder=folder))
         self._folder=folder
     
     @property
@@ -31,8 +29,13 @@ class DataSaver:
         -------
         str: full pathname where the
         """
-        if os.path.exists(self._folder):
-            raise AssertionError('folder {folder} already exists'.format(folder=self._folder))
+        if not os.path.exists(self._folder):
+            # make directories
+            try:
+                os.makedirs(self._folder)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise e
         return self._save(data, filename_prefix)
 
 class IdxFileSaver(DataSaver):
@@ -77,13 +80,6 @@ class IdxFileSaver(DataSaver):
         return bin_data
     
     def _save(self, data, filename_prefix):
-        # make directories
-        try:
-            os.makedirs(self._folder)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise e
-
         # concatenate filename
         filename=filename_prefix+'-idx{channels}-ubyte'.format(channels=len(data.shape))
 
