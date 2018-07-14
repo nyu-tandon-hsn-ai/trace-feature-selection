@@ -128,8 +128,8 @@ def train_test_split(data, all_labels, train_ratio):
             label_num=len(all_labels)
         ))
 
-    train={'images':np.array([], dtype=np.float32), 'labels':np.array([], dtype=np.int32)}
-    test={'images':np.array([], dtype=np.float32), 'labels':np.array([], dtype=np.int32)}
+    train={'images':None, 'labels':np.array([], dtype=np.int32)}
+    test={'images':None, 'labels':np.array([], dtype=np.int32)}
 
     # calculate things
     each_label_num = train_num // len(all_labels)
@@ -144,10 +144,16 @@ def train_test_split(data, all_labels, train_ratio):
                 label_num=label2imgs[label].shape[0],
                 train_num_per_label=train_num_per_label
             ))
-        train['images'] = np.append(train['images'], label2imgs[label][:train_num_per_label])
+        if train['images'] is None:
+            train['images'] = label2imgs[label][:train_num_per_label]
+        else:
+            train['images'] = np.concatenate((train['images'], label2imgs[label][:train_num_per_label]))
         train['labels'] = np.append(train['labels'], [label] * train_num_per_label)
 
-        test['images'] = np.append(test['images'], label2imgs[label][train_num_per_label:])
+        if test['images'] is None:
+            test['images'] = label2imgs[label][train_num_per_label:]
+        else:
+            test['images'] = np.concatenate((test['images'], label2imgs[label][train_num_per_label:]))
         test['labels'] = np.append(test['labels'], [label] * (label2imgs[label].shape[0] - train_num_per_label))
     return train, test
 
