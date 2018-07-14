@@ -1,0 +1,90 @@
+from collections import defaultdict
+from copy import deepcopy
+
+from utils import assert_lowercase, assert_all_different
+
+class LabelMapper:
+    """ Deal with the mapping things of labels """
+
+    def __init__(self, options):
+        assert_all_different(options)
+        assert_lowercase(options)
+        self._options=deepcopy(options)
+        self._label_name2label_id=defaultdict()
+        self._id_name_mapping()
+
+    def _id_name_mapping(self):
+        """
+        should be overrided by sub-classes
+        """
+        raise NotImplementedError()
+    
+    def _id2name(self, label_id):
+        """
+        should be overrided by sub-classes
+        """
+        raise NotImplementedError()
+    
+    def id2name(self, label_id):
+        """
+            @params
+                label_id
+            @return
+                a string representing the name of a Label
+        """
+        return self._id2name(label_id)
+    
+    def name2id(self, label_name):
+        """
+            @params
+                label_name
+            @return
+                a number representing the labe id
+        """
+        if label_name not in self._label_name2label_id.keys():
+            raise AssertionError('Unknown label name {label_name}'.format(label_name=label_name))
+        return self._label_name2label_id[label_name]
+
+    @property
+    def options(self):
+        return self._options
+    
+    def __str__(self):
+        if len(self._options) == 0:
+            return '{}'
+        else:
+            keys=self._options
+            str_mapper='{{{key}:{val}'.format(key=keys[0], val=self.name2id(keys[0]))
+            for key in keys[1:]:
+                str_mapper+= ', {key}:{val}'.format(key=key, val=self.name2id(key))
+            str_mapper += '}'
+            return str_mapper
+
+class SequentialLabelMapper(LabelMapper):
+    """ Mapping the label in a sequential manner """
+    
+    def __init__(self, options):
+        super().__init__(options)
+
+    def _id_name_mapping(self):
+        for label_id, label_name in enumerate(self._options):
+            self._label_name2label_id[label_name]=label_id
+    
+    def _id2name(self, label_id):
+        if label_id < 0 or label_id >= len(self._options):
+            raise AssertionError(
+                'Illegal label id {label_id}, should be in range {min_range}-{max_range}'.format(
+                    min_range=0,
+                    max_range=len(self._options),
+                    label_id=label_id))
+        return self._options[label_id]
+
+class BinaryLabelMapper(SequentialLabelMapper):
+    """ Mapping the label in a sequential manner """
+    
+    def __init__(self, positive_option):
+        super().__init__(options=['non-'+positive_option, positive_option])
+    
+    def _id_name_mapping(self):
+        super()._id_name_mapping()
+        self._label_name2label_id[None]=0

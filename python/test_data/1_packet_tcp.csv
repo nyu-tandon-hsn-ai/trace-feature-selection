@@ -1,2 +1,0 @@
-ip.src,ip.dst,tcp.srcport,tcp.dstport,tcp.len,frame.time_relative,tcp.seq,tcp.ack,tcp.flags.ack,tcp.flags.syn,tcp.flags.fin,tcp.stream
-47.91.74.133,172.16.26.207,443,55329,31,0.000000000,1,1,1,0,0,0

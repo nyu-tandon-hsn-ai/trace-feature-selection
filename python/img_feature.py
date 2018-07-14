@@ -1,6 +1,7 @@
 from array import *
-import os
 from collections import Counter
+import os
+from copy import deepcopy
 
 import numpy as np
 from tqdm import tqdm
@@ -12,7 +13,92 @@ from dataset.utils import balance_data, train_test_split
 IP2TCP_HEADER_LEN = 40
 PAYLOAD = 20
 
-def _ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type):
+def _stringify_protocol(protocol):
+    if protocol is TCP:
+        return 'TCP'
+    elif protocol is UDP:
+        return 'UDP'
+    else:
+        raise AssertionError('Protocol {} unsupported yet'.format(protocol))
+
+def _handle_flow_signatures(flow_signatures, pkt_count, max_pkts_per_flow):
+    # convert to `numpy.ndarray`
+    flow_signatures = np.array(flow_signatures)
+    row, col = flow_signatures.shape
+
+    # flatten per packet flow_signatures to 1D flow_signatures
+    flow_signatures = flow_signatures.flatten()
+
+    # error-proof
+    assert row * col == flow_signatures.shape[0]
+
+    # append 0 to the end of flow_signatures to align
+    if pkt_count < max_pkts_per_flow:
+        flow_signatures=np.append(flow_signatures, [0] * ((max_pkts_per_flow-pkt_count) * (IP2TCP_HEADER_LEN + PAYLOAD)))
+    
+    return flow_signatures
+
+def _extract_inter_arrival_time(arri_times, max_pkts_per_flow):
+    # calculate inter arrival times
+    inter_arri_times = _calculate_inter_arri_times(arri_times)
+
+    # do normalization
+    # ATTENTION:
+    # 1. for flow that all packets arrived at almost the same time
+    # just let the normalized inter arrival times be 0s
+    # 2. for flows that has less than max_per_flow_pkts, just append 0s 
+    if len(inter_arri_times) > 0:
+        if np.max(inter_arri_times) == np.min(inter_arri_times):
+            inter_arri_times = np.array([0] * len(inter_arri_times))
+        else:
+            inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
+
+    # also deal with flows with 1 packets among other circumstances
+    if len(inter_arri_times) < max_pkts_per_flow - 1:
+        difference = max_pkts_per_flow - 1 - len(inter_arri_times)
+        inter_arri_times = np.append(inter_arri_times,[0] * difference).astype(np.int32)
+    return inter_arri_times
+
+def _extract_session_info(sessions, session, trans_layer_type):
+    # Special case
+    if session == 'Other':
+        # error-proof
+        assert len(sessions[session]) > 0
+
+        # extract the first packet we want
+        f_pkt= None
+        for pkt in sessions[session]:
+            if IP in pkt and trans_layer_type in pkt:
+                f_pkt=pkt
+        
+        # assertion error
+        if f_pkt is None:
+            raise AssertionError()
+        
+        # extract five tuples
+        trans_layer_str=_stringify_protocol(trans_layer_type)
+        session='{protocol} {ip0}:{port0} > {ip1}:{port1}'.format(
+            protocol=trans_layer_str,
+            ip0=f_pkt[IP].src,
+            ip1=f_pkt[IP].dst,
+            port0=f_pkt[trans_layer_type].sport,
+            port1=f_pkt[trans_layer_type].dport
+        )
+
+    # extract session info
+    sess_info = extract_session_info(session)
+
+    # convert
+    return [int(sess_info['is_tcp'])] + \
+            list(sess_info['ip0'].to_bytes(4, byteorder='big')) + \
+            list(sess_info['port0'].to_bytes(2, byteorder='big')) + \
+            list(sess_info['ip1'].to_bytes(4, byteorder='big')) + \
+            list(sess_info['port1'].to_bytes(2, byteorder='big'))
+
+def _extract_flow_signature(pkt, trans_layer_type):
+    # copy packet
+    pkt = deepcopy(pkt)
+
     # TODO:
     # temporarily just omit all the options fields
     # MAYBE a better solution: fill the options field with leading/trailing 0s
@@ -20,19 +106,20 @@ def _ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type):
     if trans_layer_type is TCP:
         pkt[trans_layer_type].options = []
 
-    # remove/pad the payload in transport layer header
-    trans_bin_str = raw(pkt[trans_layer_type])
+    # Order matters here
+    # 1. get the transport layer header + payload in binary form
+    trans_bin = raw(pkt[trans_layer_type])
+    # 2. remove payload of IP layer and get the IP header in binary form
     pkt[IP].remove_payload()
-    while len(pkt[IP]) + len(trans_bin_str) < IP2TCP_HEADER_LEN + PAYLOAD:
-        trans_bin_str = trans_bin_str + b'\x00'
-    trans_bin_str = trans_bin_str[:IP2TCP_HEADER_LEN + PAYLOAD - len(pkt[IP])]
+    ip_header_bin = raw(pkt[IP])
 
-    # convert binary string to bytes
-    pkt_header_bin_str = raw(pkt[IP])
-    pkt_header_bytes = []
-    for byte in pkt_header_bin_str + trans_bin_str:
-        pkt_header_bytes.append(byte)
-    return pkt_header_bytes
+    # remove/pad the payload in transport layer header
+    while len(ip_header_bin) + len(trans_bin) < IP2TCP_HEADER_LEN + PAYLOAD:
+        trans_bin = trans_bin + b'\x00'
+    trans_bin = trans_bin[:IP2TCP_HEADER_LEN + PAYLOAD - len(ip_header_bin)]
+
+    # return flow signature in bytes
+    return [byte for byte in ip_header_bin + trans_bin]
 
 def _calculate_inter_arri_times(arri_times):
     inter_arri_times = []
@@ -49,338 +136,118 @@ def _normalize_to(data, from_low=None, from_high=None, to_low=None, to_high=None
     # downcast here
     return (data * (to_high - to_low) + to_low).astype(np.int32)
 
-def _layer_feat(filename, trans_layer_type, max_pkts_per_flow):
-    # TODO?
+def _extract_flow_img(trace_filename, trans_layer_type, max_pkts_per_flow):
+    # due to image definition for now
     if max_pkts_per_flow >= 256:
         raise AssertionError('packet count field exceeded 1 byte long')
+
     # read pcap file
-    pcap_file = rdpcap(filename)
+    pcap_file = rdpcap(trace_filename)
 
     # get all sessions
     sessions = pcap_file.sessions()
 
     # store all the features
-    feat = []
-    for session in tqdm(sessions, desc='Session'):
+    imgs = []
+    for session in tqdm(sessions, desc=_stringify_protocol(trans_layer_type) + ' Session'):
+
         # it is only until max_pkts_per_flow number of trans_layer_type packets have been captured
         # will we continue to do things
-        pkt_count = 0
-        headers = []
-        arri_times = []
-        for pkt in sessions[session]:
-            # TODO:
+        pkt_count, flow_signatures, arri_times = 0, [], []
+        for pkt in tqdm(sessions[session], desc='Current session packets'):
+
             # Ignore IPv6 for now
             if IP in pkt and trans_layer_type in pkt:
-                headers.append(_ip2trans_layer_pkt_header2bytes(pkt, trans_layer_type))
+
+                # extract flow_signature
+                flow_signatures.append(_extract_flow_signature(pkt, trans_layer_type))
+
+                # extract arrived time
                 arri_times.append(pkt.time)
+
+                # keep record of packet count
                 pkt_count += 1
                 if pkt_count == max_pkts_per_flow:
                     break
+
         # there should be at least one packet in a flow
-        if pkt_count <= 0:
+        if pkt_count == 0:
             continue
+        
+        # error-proof
         if pkt_count > max_pkts_per_flow:
             raise AssertionError()
 
-        # extract session info
-        if session == 'Other':
-            assert len(sessions[session]) > 0
-            f_pkt= None
-            for pkt in sessions[session]:
-                if IP in pkt and trans_layer_type in pkt:
-                    f_pkt=pkt
-            if f_pkt is None:
-                raise AssertionError()
+        # get session inoformation
+        session_info = _extract_session_info(sessions, session, trans_layer_type)
+
+        # handle flow signatures
+        flow_signatures = _handle_flow_signatures(flow_signatures, pkt_count, max_pkts_per_flow)
+
+        # extract inter arrival times
+        inter_arri_times = _extract_inter_arrival_time(arri_times, max_pkts_per_flow)
             
-            trans_layer_str=None
-            if trans_layer_type is TCP:
-                trans_layer_str='TCP'
-            elif trans_layer_type is UDP:
-                trans_layer_str='UDP'
-            else:
-                raise AssertionError()
-            session='{protocol} {ip0}:{port0} > {ip1}:{port1}'.format(
-                protocol=trans_layer_str,
-                ip0=f_pkt[IP].src,
-                ip1=f_pkt[IP].dst,
-                port0=f_pkt[trans_layer_type].sport,
-                port1=f_pkt[trans_layer_type].dport
-            )
-        sess_info = extract_session_info(session)
-        sess_info_vals=[int(sess_info['is_tcp'])]
-        sess_info_vals.extend((sess_info['ip0']).to_bytes(4, byteorder='big'))
-        sess_info_vals.extend((sess_info['port0']).to_bytes(2, byteorder='big'))
-        sess_info_vals.extend((sess_info['ip1']).to_bytes(4, byteorder='big'))
-        sess_info_vals.extend((sess_info['port1']).to_bytes(2, byteorder='big'))
+        # concatenate all to form one single image
+        img = np.concatenate([session_info, [pkt_count], inter_arri_times, flow_signatures])
 
-        # flatten transport layer packet headers
-        headers = np.array(headers)
-        row, col = headers.shape
-        headers = headers.flatten()
-        assert row * col == headers.shape[0]
+        # add to imgs
+        imgs.append(img)
+    return np.array(imgs, dtype=np.int32)
 
-        # append 0 to the end of headers and payloads to align
-        if pkt_count < max_pkts_per_flow:
-            headers=np.append(headers, [0] * ((max_pkts_per_flow-pkt_count) * (IP2TCP_HEADER_LEN + PAYLOAD)))
-
-        # calculate inter arrival times and do normalization
-        inter_arri_times = _calculate_inter_arri_times(arri_times)
-
-        # 1. for flow that all packets arrived at almost the same time
-        # just let the normalized inter arrival times be 0s
-        # 2. for flows that has less than max_per_flow_pkts, just append 0s 
-        if len(inter_arri_times) > 0:
-            if np.max(inter_arri_times) == np.min(inter_arri_times):
-                inter_arri_times = np.array([0] * len(inter_arri_times))
-            else:
-                inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
-        # also deal with flows with 1 packets among other circumstances
-        if len(inter_arri_times) < max_pkts_per_flow - 1:
-            difference = max_pkts_per_flow - 1 - len(inter_arri_times)
-            inter_arri_times = np.append(inter_arri_times,[0] * difference).astype(np.int32)
-            
-
-        # TODO
-        # refactor with * operator?
-        # concatenate all the sub-features
-        single_feat = np.append(sess_info_vals, pkt_count)
-        single_feat = np.append(single_feat, inter_arri_times)
-        single_feat = np.append(single_feat, headers)
-        feat.append(single_feat)
-    return np.array(feat, dtype=np.int32)
-
-def _append2bin_array(bin_array, num, byte_num=1):
+def extract(trace_filenames, max_pkts_per_flow, label_mapper, label_extractor):
     '''
-    Convert num to hex format and append to bin_array
+    Extract image features and labels
+
+    Parameters
+    ----------
+    trace_filenames: [str]
+    max_pkts_per_flow: int
+    label_mapper: `label.mapper`
+    label_extractor: `label.extractor`
+
+    Returns
+    -------
+    dict:{images: `numpy.ndarray`, labels: `numpy.ndarray`}
     '''
-    if num < 0 or num > (1 << (byte_num * 8)) - 1:
-        raise AssertionError('num should be in range 0-{max_range}, but is {num}'.format(max_range=(1 << (byte_num * 8)) - 1,num=num))
-    hex_val = hex(num) # number of num in HEX
-    hex_val = hex_val[2:]
-    while len(hex_val) < byte_num * 8 // 4:
-        hex_val = '0' + hex_val
-    for i in range(0,len(hex_val),2):
-        bin_array.append(int('0x'+hex_val[i:i+2],16))
-    return bin_array
 
-def _generate_idx_header(img_shape):
-    '''
-    Generate idx header with given img_shape
-    '''
-    header = array('B')
-    header.extend([0,0,8,len(img_shape)])
+    # init things
+    imgs, labels = [], []
+    trans_flows = {_stringify_protocol(TCP):0, _stringify_protocol(UDP):0}
 
-    for shape in img_shape:
-        _append2bin_array(header, shape, byte_num=4)
-    return header
+    # extract the image and label data of each file and concatenate w/ do stats
+    for trace_filename in tqdm(trace_filenames, desc='Processing Trace'):
+        # extract base filename
+        base_name = os.path.basename(trace_filename).lower()
 
-def _save_idx_file(data, filename, compress=True):
-    file_obj = open(filename, 'wb')
-    data.tofile(file_obj)
-    file_obj.close()
-    if compress is True:
-        os.system('gzip ' + filename)
+        # extract label from filename
+        label = label_mapper.name2id(label_extractor.extract(base_name, label_mapper.options))
 
-def _generate_img_file_data(data):
-    img_file_data = _generate_idx_header(data.shape)
-    for img in tqdm(data, desc='Image'):
-        for pixel in img:
-            _append2bin_array(img_file_data, pixel)
-    return img_file_data
+        # necessary assertion
+        assert label is not None
 
-def _generate_label_file_data(labels):
-    label_file_data = _generate_idx_header(labels.shape)
-    for label in tqdm(labels, desc='Label'):
-        _append2bin_array(label_file_data, label)
-    return label_file_data
+        # extract both TCP and UDP flow image
+        for trans_layer_type in [TCP, UDP]:
+            # calculate
+            img = _extract_flow_img(trace_filename, trans_layer_type, max_pkts_per_flow)
 
-def _save_data_labels2idx_file(data, all_labels, filename_prefix, train_ratio, compress):
-    train, test = train_test_split(data, all_labels, train_ratio)
+            # concatenate
+            imgs.extend(img)
+            labels.extend([label] * img.shape[0])
 
-    print('train ratio->', train_ratio)
-    print('train stat->', Counter(train['labels']))
+            # do stats
+            trans_layer_str = _stringify_protocol(trans_layer_type)
+            trans_flows[trans_layer_str] += img.shape[0]
 
-    # generate image data for training and testing
-    # and save them
-    train_img_file_data = _generate_img_file_data(train['images'])
-    test_img_file_data = _generate_img_file_data(test['images'])
-    _save_idx_file(train_img_file_data, filename_prefix+'-train'+'-images-idx{channels}-ubyte'.format(channels=len(train['images'].shape)), compress)
-    _save_idx_file(test_img_file_data, filename_prefix+'-test'+'-images-idx{channels}-ubyte'.format(channels=len(test['images'].shape)), compress)
+    # print stats
+    print('Raw TCP/UDP distribution', trans_flows)
 
-    # generate labels data for training and testing
-    # and save them
-    train_labels_file_data = _generate_label_file_data(train['labels'])
-    test_labels_file_data = _generate_label_file_data(test['labels'])
-    _save_idx_file(train_labels_file_data, filename_prefix+'-train'+'-labels-idx{channels}-ubyte'.format(channels=len(train['labels'].shape)), compress)
-    _save_idx_file(test_labels_file_data, filename_prefix+'-test'+'-labels-idx{channels}-ubyte'.format(channels=len(test['labels'].shape)), compress)
-
-def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, compress, label_type='vpn'):
-    '''
-    Generate idx images
-    '''
-    img_data = None
-    labels = None
-
-    # TODO: refactor
-    label_statistics = {}
-    label2label_name = {}
-    trans_flows = {'TCP':0, 'UDP':0}
-    if label_type == 'vpn':
-        label_statistics[0] = label_statistics[1] = 0
-        label2label_name[0] = 'non-vpn'
-        label2label_name[1] = 'vpn'
-    elif label_type == 'skype':
-        label_statistics[0] = label_statistics[1] = label_statistics[2] = label_statistics[3] = 0
-        label2label_name[0] = 'chat'
-        label2label_name[1] = 'audio'
-        label2label_name[2] = 'video'
-        label2label_name[3] = 'file'
-    elif label_type == 'facebook' or label_type == 'hangout':
-        sub_categories = ['chat', 'audio', 'video']
-        for i in range(len(sub_categories)):
-            label_statistics[i] = 0
-            label2label_name[i] = sub_categories[i]
-    elif label_type == 'non-vpn-app':
-        app_types = ['aim', 'email', 'spotify', 'icq', 'sftp', 'scp', 'torrent', 'facebook', 'gmail', 'hangout', 'netflix', 'ftps', 'skype', 'vimeo','tor', 'voipbuster', 'youtube']
-        for i in range(len(app_types)):
-            label_statistics[i] = 0
-            label2label_name[i] = app_types[i]
-    else:
-        raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
-
-    for trans_layer_type in [TCP, UDP]:
-        # for each file, extract features and labels and concatenate into img_data and labels
-        trans_layer_str = 'TCP' if trans_layer_type is TCP else 'UDP' if trans_layer_type is UDP else None
-        valid_flows = 0
-        for filename in tqdm(filenames, desc=trans_layer_str):
-            file_img_data = _layer_feat(filename, trans_layer_type, max_pkts_per_flow)
-            if img_data is None:
-                # no flow
-                if file_img_data.shape[0] > 0:
-                    img_data = file_img_data
-            else:
-                # no flow
-                if file_img_data.shape[0] > 0:
-                    img_data = np.concatenate((img_data, file_img_data))
-
-            label = None
-            base_name = os.path.basename(filename)
-            
-            # TODO: refactor
-            if label_type == 'vpn':
-                label = 1 if base_name.lower().startswith('vpn') else 0
-            elif label_type == 'skype':
-                if not base_name.lower().startswith('skype'):
-                    raise AssertionError('{filename} not a valid Skype file'.format(filename=filename))
-
-                meta_info = [info.lower() for info in base_name[len('skype'):].split('_') if info is not '']
-                this_sub_app_type = meta_info[0]
-
-                # TODO: refactor
-                known_types = [(0, 'chat'), (1,'audio'), (2,'video'), (3,'file')]
-                # known_types = [(key, label2label_name[key]) for key in label2label_name.keys()]
-                for sub_app_label, sub_app_type in known_types:
-                    if this_sub_app_type.startswith(sub_app_type):
-                        label = sub_app_label
-                        break
-                
-                if label is None:
-                    raise AssertionError('Unknown skype sub-category type')
-            elif label_type == 'non-vpn-app':
-                max_len = None
-                temp_label = None
-                for app_type_label in label2label_name.keys():
-                    app_type = label2label_name[app_type_label]
-                    if base_name.lower().startswith(app_type) and (temp_label is None or max_len < len(app_type)):
-                        temp_label = app_type_label
-                        max_len = len(app_type)
-                label = temp_label
-            elif label_type == 'facebook':
-                sub_categories = ['chat', 'audio', 'video']
-                if base_name.startswith('facebook_'):
-                    for sub_category_label in label2label_name.keys():
-                        if base_name[len('facebook_'):].startswith(label2label_name[sub_category_label]):
-                            label = sub_category_label
-                            break
-                elif base_name.startswith('facebook'):
-                     for sub_category_label in label2label_name.keys():
-                        if base_name[len('facebook'):].startswith(label2label_name[sub_category_label]):
-                            label = sub_category_label
-                            break
-                else:
-                    raise AssertionError('{filename} not a facebook file'.format(filename=filename))
-                
-                if label is None:
-                    raise AssertionError('Unknown facebook category type')
-            elif label_type == 'hangout':
-                sub_categories = ['chat', 'audio', 'video']
-                if base_name.startswith('hangout_'):
-                    for sub_category_label in label2label_name.keys():
-                        if base_name[len('hangout_'):].startswith(label2label_name[sub_category_label]):
-                            label = sub_category_label
-                            break
-                elif base_name.startswith('hangouts_'):
-                     for sub_category_label in label2label_name.keys():
-                        if base_name[len('hangouts_'):].startswith(label2label_name[sub_category_label]):
-                            label = sub_category_label
-                            break
-                else:
-                    raise AssertionError('{filename} not a hangout file'.format(filename=filename))
-                
-                if label is None:
-                    raise AssertionError('Unknown hangout category type')
-            else:
-                raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
-            
-            assert label is not None
-
-            label_statistics[label] += file_img_data.shape[0]
-            valid_flows += file_img_data.shape[0]
-
-            # TODO: refactor with list comprehension
-            for _ in range(file_img_data.shape[0]):
-                if labels is None:
-                    labels = [label]
-                else:
-                    labels.append(label)
-        trans_flows[trans_layer_str] += valid_flows
-
-    print('raw' + str(trans_flows))
-    labels = np.array(labels)
+    # convert to numpy
+    imgs, labels = np.array(imgs, dtype=np.int32), np.array(labels, dtype=np.int32)
 
     # necessary guanratee
-    assert img_data.shape[0] == labels.shape[0]
+    assert imgs.shape[0] == labels.shape[0]
 
-    # print out statistics
-    print('raw ' + label_type + '-> ', end='')
-    for key in label_statistics.keys():
-        print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
-    print()
+    # generate dataset
+    data = {'images':imgs, 'labels':labels}
 
-    data = {'images':img_data, 'labels':labels}
-
-    # balance data
-    data = balance_data(data, label2label_name.keys())
-
-    # reset and do statistics again
-    label_statistics = {label:0 for label in label_statistics.keys()}
-    for label in data['labels']:
-        label_statistics[label] += 1
-    
-    # TODO
-    # refactor here
-    # print out statistics
-    print('sampled ' + label_type + '-> ', end='')
-    for key in label_statistics.keys():
-        print(str(label2label_name[key]) + ':' + str(label_statistics[key]) + ' ', end='')
-    print()
-
-    _save_data_labels2idx_file(data, list(label2label_name.keys()), filename_prefix, train_ratio, compress)
-
-def img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
-    _generate_img(filenames,
-                    '{pkts}pkts-subflow-{label_type}'.format(pkts=max_pkts_per_flow, label_type=label_type),
-                    max_pkts_per_flow,
-                    train_ratio=train_ratio,
-                    compress=compress,
-                    label_type=label_type)
+    return data
