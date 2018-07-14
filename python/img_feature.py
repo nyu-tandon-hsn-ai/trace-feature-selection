@@ -1,5 +1,6 @@
 from array import *
 import os
+from collections import Counter
 
 import numpy as np
 from tqdm import tqdm
@@ -195,6 +196,9 @@ def _generate_label_file_data(labels):
 
 def _save_data_labels2idx_file(data, all_labels, filename_prefix, train_ratio, compress):
     train, test = train_test_split(data, all_labels, train_ratio)
+
+    print('train ratio->', train_ratio)
+    print('train stat->', Counter(train['labels']))
 
     # generate image data for training and testing
     # and save them
