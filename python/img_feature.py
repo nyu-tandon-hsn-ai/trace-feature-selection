@@ -378,21 +378,10 @@ def _generate_img(filenames, filename_prefix, max_pkts_per_flow, train_ratio, co
 
     _save_data_labels2idx_file(data, list(label2label_name.keys()), filename_prefix, train_ratio, compress)
 
-def img(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
+def extract(filenames, max_pkts_per_flow, train_ratio=0.8, compress=False, label_type='vpn'):
     _generate_img(filenames,
                     '{pkts}pkts-subflow-{label_type}'.format(pkts=max_pkts_per_flow, label_type=label_type),
                     max_pkts_per_flow,
                     train_ratio=train_ratio,
                     compress=compress,
                     label_type=label_type)
-
-def extract_and_save(trace_dir, save_path, config):
-    config.max_pkts_per_flow
-    config.train_ratio
-    config.label_mapper
-    config.label_extractor
-    config.data_saver
-    config.obj_name
-    data=_read_data(trace_dir, config)
-    config.data_saver.save(save_path)
-
