@@ -30,5 +30,5 @@ if __name__ == '__main__':
         compress=True,
         label_type=label_type)
     print('Time elapsed for {pkt}-pkt-sub-flow: {duration} second(s)'.format(
-        pkt='max_pkts_per_flow',
+        pkt=max_pkts_per_flow,
         duration=time.time() - start_time))
