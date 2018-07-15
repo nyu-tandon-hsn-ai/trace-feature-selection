@@ -138,16 +138,17 @@ class TestImageFeature(unittest.TestCase):
     def test_extract_pkt_signature(self):
         """ Test if _extract_pkt_signature() functions well """
 
-        ############################
+        ################################
         # CASE 1
         # TCP: Less length than expected
-        ############################
+        ################################
         
         # init
-        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '34'])/Raw('123123')
+        tcp_payload = Raw('123123')
+        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '34'])/tcp_payload
         pkt_without_tcp_payload = IP(src='127.0.0.1')/TCP(sport=80)
-        tcp_payload_raw = [item for item in raw(Raw('123123'))] + \
-                            [0] * (IP2TCP_HEADER_LEN + PAYLOAD - len(pkt_without_tcp_payload) - len(Raw('123123')))
+        tcp_payload_raw = [item for item in raw(tcp_payload)] + \
+                            [0] * (IP2TCP_HEADER_LEN + PAYLOAD - len(pkt_without_tcp_payload) - len(tcp_payload))
         right_answer = [item for item in raw(pkt_without_tcp_payload / Raw(tcp_payload_raw))]
 
         pkt_signature = _extract_pkt_signature(pkt, TCP)
@@ -185,10 +186,10 @@ class TestImageFeature(unittest.TestCase):
         self.assertEqual(len(pkt_signature), IP2TCP_HEADER_LEN + PAYLOAD)
         self.assertEqual(pkt_signature, right_answer)
 
-        ############################
+        ################################
         # CASE 4
         # UDP: Less length than expected
-        ############################
+        ################################
         
         # init
         pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('123123')
