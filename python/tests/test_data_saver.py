@@ -6,54 +6,9 @@ import shutil
 import numpy as np
 
 from data_saver import DataSaver, IdxFileSaver
+from data_loader import DataLoader, IdxFileLoader
 
 DATA_SAVER_TEST_DIR=os.path.join('.', 'tests', 'test_data', 'test_idx_file_saver')
-
-# TODO: should be tested, too
-# recommended included in utils
-def _read(dimensions, stream):
-    if len(dimensions) == 0:
-        return ord(stream.read(1))
-    elif len(dimensions) == 1:
-        return [val for val in stream.read(dimensions[0])]
-    else:
-        res = []
-        for _ in range(dimensions[0]):
-            res.append(_read(dimensions[1:], stream))
-        return res
-
-# TODO: should be tested, too
-# recommended included in utils
-# refer to gzip etc. for uncompression
-def extract(idx_filename):
-    """
-    Extract information(image/labels) from idx file
-    Parameters
-    ----------
-    idx_filename: str
-    Returns
-    -------
-    list of lists/unsigned char: `numpy.array`
-        image/label with shape designated in idx file
-    """
-    with open(idx_filename, 'rb') as f:
-        magic_numbers=f.read(4)
-        assert magic_numbers[0] == 0 and magic_numbers[1] == 0
-        if magic_numbers[2] != 8:
-            raise AssertionError('Only support for unsigned char now')
-        data_type=magic_numbers[2]
-        shape=magic_numbers[3]
-        num_examples=int.from_bytes(f.read(4), byteorder='big')
-        dimensions=[]
-        for _ in range(shape-1):
-            dimensions.append(int.from_bytes(f.read(4), byteorder='big'))
-        data_list=[]
-        for _ in range(num_examples):
-            each_data_point=_read(dimensions, f)
-            data_list.append(each_data_point)
-        
-    data_list = np.array(data_list)
-    return data_type, shape, dimensions, num_examples, data_list
 
 ######################################################################
 #  T E S T   C A S E S
@@ -78,7 +33,6 @@ class TestDataSaver(unittest.TestCase):
         self.assertEqual(data_saver.folder, DATA_SAVER_TEST_DIR)
         with self.assertRaises(NotImplementedError):
             data_saver.save(np.array([1,2,3]), 'nothing')
-            data_saver.load('nothing')
     
     def test_idx_file_saver(self):
         """ Test whether IdxFileSaver class functions well """
@@ -102,20 +56,21 @@ class TestDataSaver(unittest.TestCase):
         self.assertEqual(data_saver._add_header_and_convert2bin(np.array(test2d)), array('B', [0,0,8,2,0,0,1,0,0,0,1,2]+[255]*256*258))
 
         saving_pathname=data_saver.save(np.array(test1d), filename_prefix='test1d')
-        data_type, shape, dimensions, num_examples, data_list=extract(saving_pathname)
+        data_loader = IdxFileLoader()
+        data_type, shape, dimensions, num_examples, data_list=data_loader.load(saving_pathname, gzip_compressed=False)
         self.assertEqual(data_type, 8)
         self.assertEqual(shape, 1)
-        self.assertEqual(dimensions, [])
+        self.assertTrue((dimensions == np.array([], dtype=np.int32)).all())
         self.assertEqual(num_examples, len(test1d))
         self.assertTrue((data_list == test1d).all())
 
         self._delete_data_dirs()
 
         saving_pathname=data_saver.save(np.array(test2d), filename_prefix='test2d')
-        data_type, shape, dimensions, num_examples, data_list=extract(saving_pathname)
+        data_type, shape, dimensions, num_examples, data_list=data_loader.load(saving_pathname, gzip_compressed=False)
         self.assertEqual(data_type, 8)
         self.assertEqual(shape, 2)
-        self.assertEqual(dimensions, [len(test2d[0])])
+        self.assertTrue((dimensions == np.array([len(test2d[0])], dtype=np.int32)).all())
         self.assertEqual(num_examples, len(test2d))
         self.assertTrue((data_list == test2d).all())
     
