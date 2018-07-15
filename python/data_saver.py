@@ -27,7 +27,8 @@ class DataSaver:
 
         Returns
         -------
-        str: full pathname where the
+        str
+            full pathname where the data is saved
         """
         if not os.path.exists(self._folder):
             # make directories
