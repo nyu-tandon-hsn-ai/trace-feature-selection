@@ -33,7 +33,6 @@ class TestDataSaver(unittest.TestCase):
         self.assertEqual(data_saver.folder, DATA_SAVER_TEST_DIR)
         with self.assertRaises(NotImplementedError):
             data_saver.save(np.array([1,2,3]), 'nothing')
-            data_saver.load('nothing')
     
     def test_idx_file_saver(self):
         """ Test whether IdxFileSaver class functions well """
@@ -58,20 +57,20 @@ class TestDataSaver(unittest.TestCase):
 
         saving_pathname=data_saver.save(np.array(test1d), filename_prefix='test1d')
         data_loader = IdxFileLoader()
-        data_type, shape, dimensions, num_examples, data_list=data_loader.load(saving_pathname)
+        data_type, shape, dimensions, num_examples, data_list=data_loader.load(saving_pathname, gzip_compressed=False)
         self.assertEqual(data_type, 8)
         self.assertEqual(shape, 1)
-        self.assertEqual(dimensions, [])
+        self.assertTrue((dimensions == np.array([], dtype=np.int32)).all())
         self.assertEqual(num_examples, len(test1d))
         self.assertTrue((data_list == test1d).all())
 
         self._delete_data_dirs()
 
         saving_pathname=data_saver.save(np.array(test2d), filename_prefix='test2d')
-        data_type, shape, dimensions, num_examples, data_list=data_loader.load(saving_pathname)
+        data_type, shape, dimensions, num_examples, data_list=data_loader.load(saving_pathname, gzip_compressed=False)
         self.assertEqual(data_type, 8)
         self.assertEqual(shape, 2)
-        self.assertEqual(dimensions, [len(test2d[0])])
+        self.assertTrue((dimensions == np.array([len(test2d[0])], dtype=np.int32)).all())
         self.assertEqual(num_examples, len(test2d))
         self.assertTrue((data_list == test2d).all())
     
