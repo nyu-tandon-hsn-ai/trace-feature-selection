@@ -144,7 +144,7 @@ class TestImageFeature(unittest.TestCase):
         ############################
         
         # init
-        pkt = IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '34'])/Raw('123123')
+        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '34'])/Raw('123123')
         pkt_without_tcp_payload = IP(src='127.0.0.1')/TCP(sport=80)
         tcp_payload_raw = [item for item in raw(Raw('123123'))] + \
                             [0] * (IP2TCP_HEADER_LEN + PAYLOAD - len(pkt_without_tcp_payload) - len(Raw('123123')))
@@ -161,7 +161,7 @@ class TestImageFeature(unittest.TestCase):
         ############################
         
         # init
-        pkt = IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '43'])/Raw('12311234233213123231')
+        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '43'])/Raw('12311234233213123231')
         pkt_without_options = IP(src='127.0.0.1')/TCP(sport=80)/Raw('12311234233213123231')
         right_answer = [item for item in raw(pkt_without_options)]
 
@@ -176,7 +176,7 @@ class TestImageFeature(unittest.TestCase):
         ############################
         
         # init
-        pkt = IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '43'])/Raw('12311234233213123231234')
+        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '43'])/Raw('12311234233213123231234')
         pkt_without_options = IP(src='127.0.0.1')/TCP(sport=80)/Raw('12311234233213123231')
         right_answer = [item for item in raw(pkt_without_options)]
 
@@ -191,7 +191,7 @@ class TestImageFeature(unittest.TestCase):
         ############################
         
         # init
-        pkt = IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('123123')
+        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('123123')
         pkt_without_udp_payload = IP(src='127.0.0.1')/UDP(sport=80)
         udp_payload_raw = [item for item in raw(Raw('123123'))] + \
                             [0] * (IP2TCP_HEADER_LEN + PAYLOAD - len(pkt_without_udp_payload) - len(Raw('123123')))
@@ -208,7 +208,7 @@ class TestImageFeature(unittest.TestCase):
         ############################
         
         # init
-        pkt = IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('12312311111111111111111111111111')
+        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('12312311111111111111111111111111')
         pkt_without_options = IP(src='127.0.0.1')/UDP(sport=80)/Raw('12312311111111111111111111111111')
         right_answer = [item for item in raw(pkt_without_options)]
 
@@ -223,7 +223,7 @@ class TestImageFeature(unittest.TestCase):
         ############################
         
         # init
-        pkt = IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('1231231111111111111111111111111132131')
+        pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('1231231111111111111111111111111132131')
         pkt_without_options = IP(src='127.0.0.1')/UDP(sport=80)/Raw('12312311111111111111111111111111')
         right_answer = [item for item in raw(pkt_without_options)]
 
