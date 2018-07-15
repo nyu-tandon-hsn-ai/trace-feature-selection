@@ -107,6 +107,9 @@ def _extract_pkt_signature(pkt, trans_layer_type):
     # copy packet
     pkt = deepcopy(pkt)
 
+    # only consider IP layer and above
+    pkt = pkt[IP]
+
     # TODO:
     # temporarily just omit all the options fields
     # MAYBE a better solution: fill the options field with leading/trailing 0s
