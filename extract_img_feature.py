@@ -35,7 +35,7 @@ def _get_label_mapper(label_type):
 
 # TODO?
 def _get_label_extractor(label_type):
-    if label_type == 'vpn':
+    if label_type == 'vpn' or label_type == 'non-vpn-app':
         return StartPositionLabelExtractor([0])
     elif label_type == 'skype':
         return StartPositionLabelExtractor([len(label_type+'_')])
