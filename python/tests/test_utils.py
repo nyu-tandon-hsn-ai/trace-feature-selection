@@ -1,6 +1,6 @@
 import unittest
 
-from utils import assert_lowercase, assert_all_different
+from utils import assert_lowercase, assert_all_different, normalize_to
 
 ######################################################################
 #  T E S T   C A S E S
@@ -23,6 +23,16 @@ class TestUtils(unittest.TestCase):
         duplicate_vals=['test', 'test', 'test-prime']
         with self.assertRaises(AssertionError):
             assert_all_different(duplicate_vals)
+    
+    def test_normalize_to(self):
+        """ Test if normalize_to() functions well """
+
+        data = [1.0, 3.0, 2.0]
+        self.assertTrue((normalize_to(data, 0, 255) == [0, 255, 127]).all())
+
+        data = [1.0]
+        self.assertTrue((normalize_to(data, 0, 255) == [0]).all())
+
     
 ######################################################################
 #   M A I N

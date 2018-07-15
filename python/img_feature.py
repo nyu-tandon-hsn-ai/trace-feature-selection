@@ -5,10 +5,12 @@ from copy import deepcopy
 
 import numpy as np
 from tqdm import tqdm
+import scapy
 from scapy.all import *
 
 from session_info import extract_session_info
 from dataset.utils import balance_data, train_test_split
+from utils import normalize_to
 
 IP2TCP_HEADER_LEN = 40
 PAYLOAD = 20
@@ -20,6 +22,12 @@ def _stringify_protocol(protocol):
         return 'UDP'
     else:
         raise AssertionError('Protocol {} unsupported yet'.format(protocol))
+
+def _calculate_inter_arri_times(arri_times):
+    inter_arri_times = []
+    for i in range(1, len(arri_times)):
+        inter_arri_times.append(arri_times[i] - arri_times[i - 1])
+    return inter_arri_times
 
 def _handle_flow_signatures(flow_signatures, pkt_count, max_pkts_per_flow):
     # convert to `numpy.ndarray`
@@ -40,7 +48,7 @@ def _handle_flow_signatures(flow_signatures, pkt_count, max_pkts_per_flow):
 
 def _extract_inter_arrival_time(arri_times, max_pkts_per_flow):
     # calculate inter arrival times
-    inter_arri_times = _calculate_inter_arri_times(arri_times)
+    inter_arri_times = np.array(_calculate_inter_arri_times(arri_times))
 
     # do normalization
     # ATTENTION:
@@ -51,7 +59,7 @@ def _extract_inter_arrival_time(arri_times, max_pkts_per_flow):
         if np.max(inter_arri_times) == np.min(inter_arri_times):
             inter_arri_times = np.array([0] * len(inter_arri_times))
         else:
-            inter_arri_times = _normalize_to(inter_arri_times, to_low=0, to_high=255)
+            inter_arri_times = normalize_to(inter_arri_times, to_low=0, to_high=255)
 
     # also deal with flows with 1 packets among other circumstances
     if len(inter_arri_times) < max_pkts_per_flow - 1:
@@ -95,7 +103,7 @@ def _extract_session_info(sessions, session, trans_layer_type):
             list(sess_info['ip1'].to_bytes(4, byteorder='big')) + \
             list(sess_info['port1'].to_bytes(2, byteorder='big'))
 
-def _extract_flow_signature(pkt, trans_layer_type):
+def _extract_pkt_signature(pkt, trans_layer_type):
     # copy packet
     pkt = deepcopy(pkt)
 
@@ -106,35 +114,23 @@ def _extract_flow_signature(pkt, trans_layer_type):
     if trans_layer_type is TCP:
         pkt[trans_layer_type].options = []
 
-    # Order matters here
-    # 1. get the transport layer header + payload in binary form
-    trans_bin = raw(pkt[trans_layer_type])
-    # 2. remove payload of IP layer and get the IP header in binary form
-    pkt[IP].remove_payload()
-    ip_header_bin = raw(pkt[IP])
+    # get the transport layer payload
+    trans_layer_payload_bin = b'' if isinstance(pkt[trans_layer_type].payload, scapy.packet.NoPayload) else raw(pkt[trans_layer_type].payload)
+
+    # remove the transport layer payload
+    pkt[trans_layer_type].remove_payload()
+    pkt_without_trans_layer_payload = pkt
 
     # remove/pad the payload in transport layer header
-    while len(ip_header_bin) + len(trans_bin) < IP2TCP_HEADER_LEN + PAYLOAD:
-        trans_bin = trans_bin + b'\x00'
-    trans_bin = trans_bin[:IP2TCP_HEADER_LEN + PAYLOAD - len(ip_header_bin)]
+    if len(pkt_without_trans_layer_payload) + len(trans_layer_payload_bin) < IP2TCP_HEADER_LEN + PAYLOAD:
+        trans_layer_payload_bin += b'\x00' * (IP2TCP_HEADER_LEN + PAYLOAD - len(pkt_without_trans_layer_payload) + len(trans_layer_payload_bin))
+    trans_layer_payload_bin = trans_layer_payload_bin[:IP2TCP_HEADER_LEN + PAYLOAD - len(pkt_without_trans_layer_payload)]
+
+    # construct new packet
+    new_pkt = pkt_without_trans_layer_payload/Raw(trans_layer_payload_bin)
 
     # return flow signature in bytes
-    return [byte for byte in ip_header_bin + trans_bin]
-
-def _calculate_inter_arri_times(arri_times):
-    inter_arri_times = []
-    for i in range(1, len(arri_times)):
-        inter_arri_times.append(arri_times[i] - arri_times[i - 1])
-    return inter_arri_times
-
-def _normalize_to(data, from_low=None, from_high=None, to_low=None, to_high=None):
-    data = np.array(data)
-    if from_low is None and from_high is None:
-        from_low = np.min(data)
-        from_high = np.max(data)
-    data = (data - from_low) / (from_high - from_low)
-    # downcast here
-    return (data * (to_high - to_low) + to_low).astype(np.int32)
+    return [byte for byte in raw(new_pkt)]
 
 def _extract_flow_img(trace_filename, trans_layer_type, max_pkts_per_flow):
     # due to image definition for now
@@ -160,7 +156,7 @@ def _extract_flow_img(trace_filename, trans_layer_type, max_pkts_per_flow):
             if IP in pkt and trans_layer_type in pkt:
 
                 # extract flow_signature
-                flow_signatures.append(_extract_flow_signature(pkt, trans_layer_type))
+                flow_signatures.append(_extract_pkt_signature(pkt, trans_layer_type))
 
                 # extract arrived time
                 arri_times.append(pkt.time)
