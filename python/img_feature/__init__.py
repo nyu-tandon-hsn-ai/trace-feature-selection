@@ -22,7 +22,7 @@ def calculate_inter_arri_times(arri_times):
     return inter_arri_times
 
 def extract_flow_img_from_single_trace_file(img_feature_extractor, label_mapper, label_extractor,
-                trace_filename, trans_layer_type, **kwargs):
+                trace_filename, trans_layer_type):
     # extract base filename
     base_name = os.path.basename(trace_filename).lower()
 
@@ -33,11 +33,11 @@ def extract_flow_img_from_single_trace_file(img_feature_extractor, label_mapper,
     assert label is not None
 
     # calculate
-    images = img_feature_extractor.extract_flow_img(trace_filename, trans_layer_type, **kwargs)
+    images = img_feature_extractor.extract_flow_img(trace_filename, trans_layer_type)
 
     return images, np.repeat(label, images.shape[0]), stringify_protocol(trans_layer_type)
 
-def extract(trace_filenames, label_mapper, label_extractor, img_feature_extractor, **kwargs):
+def extract(trace_filenames, label_mapper, label_extractor, img_feature_extractor):
     '''
     Extract image features and labels
 
@@ -73,8 +73,7 @@ def extract(trace_filenames, label_mapper, label_extractor, img_feature_extracto
     res = p.starmap(partial(extract_flow_img_from_single_trace_file,
                             img_feature_extractor,
                             label_mapper,
-                            label_extractor,
-                            **kwargs), parallel_args)
+                            label_extractor), parallel_args)
 
     # reduce phase: concatenate, do stats
     for single_tracefile_images, single_tracefile_labels, trans_layer_name in res:

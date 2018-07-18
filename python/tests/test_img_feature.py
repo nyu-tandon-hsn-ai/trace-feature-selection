@@ -1,17 +1,17 @@
 import unittest
 from ipaddress import IPv4Address
+import os
 
 from scapy.all import *
 import numpy as np
 
 from img_feature import stringify_protocol, calculate_inter_arri_times
-from img_feature.extractor import AboveIpLayerHeaderPayloadExtractor
-#from img_feature import AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN, TestAboveIPExtractor.extractor._app_layer_payload_len, _handle_flow_signatures,
-# _extract_inter_arrival_time, _calculate_inter_arri_times, _extract_pkt_signature, _extract_session_info
+from img_feature.extractor import AboveIpLayerHeaderPayloadExtractor, AppLayerLengthExtractor
 
 ######################################################################
 #  T E S T   C A S E S
 ######################################################################
+# TODO: test more methods
 class TestImageFeature(unittest.TestCase):
     """ Test Cases for extracting image features """
 
@@ -61,16 +61,17 @@ class TestImageFeature(unittest.TestCase):
 
         self.assertEqual(inter_arri_times, right_answer)
 
+# TODO: test more methods
 class TestAboveIPExtractor(unittest.TestCase):
     """ Test class AboveIpLayerHeaderPayloadExtractor """
 
     @classmethod
     def setUpClass(cls):
-        TestAboveIPExtractor.extractor = AboveIpLayerHeaderPayloadExtractor(app_layer_payload_len=20)
+        TestAboveIPExtractor.extractor = AboveIpLayerHeaderPayloadExtractor(max_pkts_per_flow=5,trans_layer_payload_len=20)
     
     @classmethod
     def tearDownClass(cls):
-        TestAboveIPExtractor.extractor = None
+        del TestAboveIPExtractor.extractor
 
     def test_handle_flow_signatures(self):
         """ Test if TestAboveIPExtractor.extractor._handle_flow_signatures() functions well """
@@ -101,7 +102,7 @@ class TestAboveIPExtractor(unittest.TestCase):
         # init things
         flow_signatures = [[1,2],[3,4]]
         pkt_count = 1
-        appended = [0] * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len)
+        appended = [0] * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         max_pkts_per_flow = 2
 
         # generated things
@@ -160,12 +161,12 @@ class TestAboveIPExtractor(unittest.TestCase):
         pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/TCP(sport=80, options=['12', '34'])/tcp_payload
         pkt_without_tcp_payload = IP(src='127.0.0.1')/TCP(sport=80)
         tcp_payload_raw = [item for item in raw(tcp_payload)] + \
-                            [0] * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len - len(pkt_without_tcp_payload) - len(tcp_payload))
+                            [0] * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len - len(pkt_without_tcp_payload) - len(tcp_payload))
         right_answer = [item for item in raw(pkt_without_tcp_payload / Raw(tcp_payload_raw))]
 
         pkt_signature = TestAboveIPExtractor.extractor._extract_pkt_signature(pkt, TCP)
 
-        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len)
+        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         self.assertEqual(pkt_signature, right_answer)
 
         ############################
@@ -180,7 +181,7 @@ class TestAboveIPExtractor(unittest.TestCase):
 
         pkt_signature = TestAboveIPExtractor.extractor._extract_pkt_signature(pkt, TCP)
 
-        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len)
+        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         self.assertEqual(pkt_signature, right_answer)
 
         ############################
@@ -195,7 +196,7 @@ class TestAboveIPExtractor(unittest.TestCase):
 
         pkt_signature = TestAboveIPExtractor.extractor._extract_pkt_signature(pkt, TCP)
 
-        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len)
+        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         self.assertEqual(pkt_signature, right_answer)
 
         ################################
@@ -207,12 +208,12 @@ class TestAboveIPExtractor(unittest.TestCase):
         pkt = Ether(type=0x800)/IP(src='127.0.0.1', options=['1','2','3'])/UDP(sport=80)/Raw('123123')
         pkt_without_udp_payload = IP(src='127.0.0.1')/UDP(sport=80)
         udp_payload_raw = [item for item in raw(Raw('123123'))] + \
-                            [0] * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len - len(pkt_without_udp_payload) - len(Raw('123123')))
+                            [0] * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len - len(pkt_without_udp_payload) - len(Raw('123123')))
         right_answer = [item for item in raw(pkt_without_udp_payload / Raw(udp_payload_raw))]
 
         pkt_signature = TestAboveIPExtractor.extractor._extract_pkt_signature(pkt, UDP)
 
-        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len)
+        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         self.assertEqual(pkt_signature, right_answer)
 
         ############################
@@ -227,7 +228,7 @@ class TestAboveIPExtractor(unittest.TestCase):
 
         pkt_signature = TestAboveIPExtractor.extractor._extract_pkt_signature(pkt, UDP)
 
-        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len)
+        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         self.assertEqual(pkt_signature, right_answer)
 
         ############################
@@ -242,7 +243,7 @@ class TestAboveIPExtractor(unittest.TestCase):
 
         pkt_signature = TestAboveIPExtractor.extractor._extract_pkt_signature(pkt, UDP)
 
-        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._app_layer_payload_len)
+        self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         self.assertEqual(pkt_signature, right_answer)
     
     #TODO:
@@ -265,7 +266,7 @@ class TestAboveIPExtractor(unittest.TestCase):
 
         self.assertEqual(TestAboveIPExtractor.extractor._extract_session_info(None, tcp_session, TCP), right_answer)
 
-         #########
+        ##########
         # CASE 2
         # UDP
         #########
@@ -279,6 +280,47 @@ class TestAboveIPExtractor(unittest.TestCase):
         right_answer.append(187)
 
         self.assertEqual(TestAboveIPExtractor.extractor._extract_session_info(None, udp_session, UDP), right_answer)
+
+# TODO: test more methods
+class TestAppLayerLengthExtractor(unittest.TestCase):
+    """ Test class AppLayerLengthExtractor """
+
+    @classmethod
+    def setUpClass(cls):
+        TestAppLayerLengthExtractor.extractor = AppLayerLengthExtractor(trans_layer_payload_len=20)
+        TestAppLayerLengthExtractor.test_path = os.path.join('tests', 'test_data', '1_packet.pcap')
+    
+    @classmethod
+    def tearDownClass(cls):
+        del TestAppLayerLengthExtractor.extractor
+        del TestAppLayerLengthExtractor.test_path
+
+    def test_extract_trans_layer_payload(self):
+        """ Test if AppLayerLengthExtractor()._extract_trans_layer_payload() functions well """
+
+        tcp_pkt = Ether(type=0x800)/IP(src='192.168.0.1')/TCP(sport=80)/Raw('This is a test message')
+        res = TestAppLayerLengthExtractor.extractor._extract_trans_layer_payload(tcp_pkt, TCP)
+        right_answer = [84, 104, 105, 115, 32, 105, 115, 32, 97, 32, 116, 101, 115, 116, 32, 109, 101, 115, 115, 97, 103, 101]
+        self.assertEqual(res, right_answer)
+
+        udp_pkt = Ether(type=0x800)/IP(src='192.168.0.1')/UDP(sport=80)/Raw('This is a test message')
+        res = TestAppLayerLengthExtractor.extractor._extract_trans_layer_payload(udp_pkt, UDP)
+        right_answer = [84, 104, 105, 115, 32, 105, 115, 32, 97, 32, 116, 101, 115, 116, 32, 109, 101, 115, 115, 97, 103, 101]
+        self.assertEqual(res, right_answer)
+
+    def test_extract_flow_img(self):
+        """ Check extract_flow_img() in AppLayerLengthExtractor functions well """
+
+        # UDP
+        res = TestAppLayerLengthExtractor.extractor.extract_flow_img(TestAppLayerLengthExtractor.test_path, UDP)
+        right_answer = np.array([45, 109, 129, 128, 0, 1, 0, 17, 0, 0, 0, 0, 3, 119, 119, 119, 16, 103, 111, 111])
+        self.assertTrue((res == right_answer).all())
+
+        # TCP
+        res = TestAppLayerLengthExtractor.extractor.extract_flow_img(TestAppLayerLengthExtractor.test_path, TCP)
+        right_answer = np.array([])
+        self.assertTrue((res == right_answer).all())
+         
 
 ######################################################################
 #   M A I N

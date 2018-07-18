@@ -10,15 +10,30 @@ from session_info import extract_session_info
 from img_feature import stringify_protocol, calculate_inter_arri_times
 
 class Extractor:
-    def extract_flow_img(self, trace_filename, **kwargs):
+
+    @property
+    def desc(self):
+        return self._extract_description()
+
+    def _extract_description(self):
+        raise NotImplementedError()
+
+    def extract_flow_img(self, trace_filename):
         raise NotImplementedError()
 
 class AboveIpLayerHeaderPayloadExtractor(Extractor):
 
     IP2TRANS_LAYER_HEADER_LEN=40
 
-    def __init__(self, app_layer_payload_len):
-        self._app_layer_payload_len = app_layer_payload_len
+    def __init__(self, max_pkts_per_flow, trans_layer_payload_len):
+        # due to image definition for now
+        if max_pkts_per_flow >= 256:
+            raise AssertionError('packet count field exceeded 1 byte long')
+        self._max_pkts_per_flow = max_pkts_per_flow
+        self._trans_layer_payload_len = trans_layer_payload_len
+
+    def _extract_description(self):
+        return '{}-pkts-subflow'.format(self._max_pkts_per_flow)
 
     def _handle_flow_signatures(self, flow_signatures, pkt_count, max_pkts_per_flow):
         # convert to `numpy.ndarray`
@@ -33,7 +48,7 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
 
         # append 0 to the end of flow_signatures to align
         if pkt_count < max_pkts_per_flow:
-            flow_signatures=np.append(flow_signatures, [0] * ((max_pkts_per_flow-pkt_count) * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._app_layer_payload_len)))
+            flow_signatures=np.append(flow_signatures, [0] * ((max_pkts_per_flow-pkt_count) * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._trans_layer_payload_len)))
         
         return flow_signatures
 
@@ -116,9 +131,9 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
         pkt_without_trans_layer_payload = pkt
 
         # remove/pad the payload in transport layer header
-        if len(pkt_without_trans_layer_payload) + len(trans_layer_payload_bin) < AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._app_layer_payload_len:
-            trans_layer_payload_bin += b'\x00' * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._app_layer_payload_len - len(pkt_without_trans_layer_payload) + len(trans_layer_payload_bin))
-        trans_layer_payload_bin = trans_layer_payload_bin[:AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._app_layer_payload_len - len(pkt_without_trans_layer_payload)]
+        if len(pkt_without_trans_layer_payload) + len(trans_layer_payload_bin) < AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._trans_layer_payload_len:
+            trans_layer_payload_bin += b'\x00' * (AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._trans_layer_payload_len - len(pkt_without_trans_layer_payload) + len(trans_layer_payload_bin))
+        trans_layer_payload_bin = trans_layer_payload_bin[:AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + self._trans_layer_payload_len - len(pkt_without_trans_layer_payload)]
 
         # construct new packet
         new_pkt = pkt_without_trans_layer_payload/Raw(trans_layer_payload_bin)
@@ -126,13 +141,8 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
         # return flow signature in bytes
         return [byte for byte in raw(new_pkt)]
 
-    def extract_flow_img(self, trace_filename, trans_layer_type, **kwargs):
-        # extract parameters
-        max_pkts_per_flow = kwargs['max_pkts_per_flow']
-
-        # due to image definition for now
-        if max_pkts_per_flow >= 256:
-            raise AssertionError('packet count field exceeded 1 byte long')
+    def extract_flow_img(self, trace_filename, trans_layer_type):
+        max_pkts_per_flow = self._max_pkts_per_flow
 
         # read pcap file
         pcap_file = rdpcap(trace_filename)
@@ -188,4 +198,68 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
         return np.array(imgs, dtype=np.int32)
 
 class AppLayerLengthExtractor(Extractor):
-    pass
+    
+    def __init__(self, trans_layer_payload_len):
+        self._trans_layer_payload_len = trans_layer_payload_len
+    
+    def _extract_description(self):
+        return '{}-byte-payload-per-flow'.format(self._trans_layer_payload_len)
+    
+    def _extract_trans_layer_payload(self, pkt, trans_layer_type):
+        return [] if isinstance(pkt[trans_layer_type].payload, scapy.packet.NoPayload) else \
+                [item for item in raw(pkt[trans_layer_type].payload)]
+    
+    def extract_flow_img(self, trace_filename, trans_layer_type):
+        # read pcap file
+        pcap_file = rdpcap(trace_filename)
+
+        # get all sessions
+        sessions = pcap_file.sessions()
+
+        # store all the features
+        imgs = []
+        for session in tqdm(sessions, desc=trace_filename.split('.')[-2][-5:]+stringify_protocol(trans_layer_type) + ' Session'):
+
+            # it is only until max_pkts_per_flow number of trans_layer_type packets have been captured
+            # will we continue to do things
+            flow_signatures = []
+
+            byte_count = 0
+
+            for pkt in tqdm(sessions[session], desc='Current session packets'):
+
+                # Ignore IPv6 for now
+                if IP in pkt and trans_layer_type in pkt:
+                    # transport layer payload
+                    trans_layer_payload = self._extract_trans_layer_payload(pkt, trans_layer_type)
+
+                    if byte_count + len(trans_layer_payload) > self._trans_layer_payload_len:
+                        trans_layer_payload = trans_layer_payload[\
+                            :-(byte_count + len(trans_layer_payload) - self._trans_layer_payload_len)]
+                        byte_count = self._trans_layer_payload_len
+                    else:
+                        byte_count += len(trans_layer_payload)
+
+                    # extract flow_signature
+                    flow_signatures.extend(trans_layer_payload)
+                    if byte_count == self._trans_layer_payload_len:
+                        break
+
+            # there should be at least one byte of payload in a flow
+            if byte_count == 0:
+                continue
+            
+            # error-proof
+            if byte_count > self._trans_layer_payload_len:
+                raise AssertionError()
+            
+            # padding
+            if len(flow_signatures) < self._trans_layer_payload_len:
+                flow_signatures += [0] * (self._trans_layer_payload_len - len(flow_signatures))
+                
+            # generate images
+            img = np.array(flow_signatures)
+
+            # add to imgs
+            imgs.append(img)
+        return np.array(imgs, dtype=np.int32)
