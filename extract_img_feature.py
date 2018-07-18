@@ -3,8 +3,10 @@ import time
 from os import listdir
 from os.path import isfile, join
 from collections import Counter
+import argparse
 
-import img_feature
+import img_feature 
+from img_feature.extractor import AboveIpLayerHeaderPayloadExtractor, AppLayerLengthExtractor
 from data_saver import IdxFileSaver
 from dataset.utils import train_test_split, balance_data
 from label.mapper import SequentialLabelMapper, BinaryLabelMapper
@@ -46,19 +48,38 @@ def _get_label_extractor(label_type):
     else:
         raise AssertionError('Unknwon label type {label_type}'.format(label_type=label_type))
 
-def _main(*args):
-    # TODO: parse arguments
-    trace_dir = args[0]
-    max_pkts_per_flow = int(args[1])
-    label_type = args[2]
-    save_path = args[3]
-    train_ratio = float(args[4])
+# TODO?
+def _get_img_feature_extractor(img_feature_type):
+    if img_feature_type == 'ip-above':
+        return AboveIpLayerHeaderPayloadExtractor(app_layer_payload_len=20)
+    elif img_feature_type == 'payload-len':
+        return AppLayerLengthExtractor()
+    else:
+        raise AssertionError('Unknown image feature type {}'.format(img_feature_type))
+
+def _main():
+    # parse arguments
+    parser = argparse.ArgumentParser(description = 'Flow Image Feature Preprocessing')
+    parser.add_argument('-td', '--trace-dir', help='trace directory')
+    parser.add_argument('-m', '--max-pkts-per-flow', help='max packets per flow', type=int, default=10)
+    parser.add_argument('-l', '--label-type', help='label type', default='skype')
+    parser.add_argument('-s', '--save-path', help='saving path')
+    parser.add_argument('-tr', '--train-ratio', help='training dataset ratio', type=float, default=0.8)
+    parser.add_argument('-i', '--img-feature-type', help='image feature extractor type')
+    args = parser.parse_args()
+
+    trace_dir = args.trace_dir
+    label_type = args.label_type
+    save_path = args.save_path
+    train_ratio = args.train_ratio
+    img_feature_type = args.img_feature_type
+    max_pkts_per_flow = args.max_pkts_per_flow
 
     # record start time
     start_time = time.time()
-    print('{pkt}-pkt-sub-flow start'.format(pkt=max_pkts_per_flow))
 
     # init several things
+    img_feature_extractor = _get_img_feature_extractor(img_feature_type)
     data_saver = IdxFileSaver(save_path, compress_file=True)
     label_mapper = _get_label_mapper(label_type)
     label_extractor = _get_label_extractor(label_type)
@@ -67,9 +88,10 @@ def _main(*args):
     # extract image features
     trace_filenames = [join(trace_dir,f) for f in listdir(trace_dir) if isfile(join(trace_dir, f))]
     data = img_feature.extract(trace_filenames,
-                max_pkts_per_flow=max_pkts_per_flow,
                 label_mapper=label_mapper,
-                label_extractor=label_extractor)
+                label_extractor=label_extractor,
+                img_feature_extractor=img_feature_extractor,
+                max_pkts_per_flow=max_pkts_per_flow)
 
     # raw statistics
     print('Raw->', Counter([label_mapper.id2name(label) for label in data['labels']]))
@@ -93,11 +115,8 @@ def _main(*args):
     print('Saved path:', _save_data(data_saver, train, test, file_prefix))
 
     # total time
-    print('Time elapsed for {pkt}-pkt-sub-flow: {duration} second(s)'.format(
-        pkt=max_pkts_per_flow,
+    print('Time elapsed : {duration} second(s)'.format(
         duration=time.time() - start_time))
 
 if __name__ == '__main__':
-    if len(sys.argv) != 6:
-        exit(-1)
-    _main(*sys.argv[1:])
+    _main()
