@@ -142,7 +142,7 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
 
         # store all the features
         imgs = []
-        for session in tqdm(sessions, desc=stringify_protocol(trans_layer_type) + ' Session'):
+        for session in tqdm(sessions, desc=trace_filename.split('.')[-2][-5:]+stringify_protocol(trans_layer_type) + ' Session'):
 
             # it is only until max_pkts_per_flow number of trans_layer_type packets have been captured
             # will we continue to do things
