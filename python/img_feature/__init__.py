@@ -6,6 +6,7 @@ from functools import partial
 
 import numpy as np
 from scapy.all import *
+from tqdm import tqdm
 
 def stringify_protocol(protocol):
     if protocol is TCP:
@@ -37,7 +38,7 @@ def extract_flow_img_from_single_trace_file(img_feature_extractor, label_mapper,
 
     return images, np.repeat(label, images.shape[0]), stringify_protocol(trans_layer_type)
 
-def extract(trace_filenames, label_mapper, label_extractor, img_feature_extractor):
+def extract(trace_filenames, label_mapper, label_extractor, img_feature_extractor, parallel=False):
     '''
     Extract image features and labels
 
@@ -60,20 +61,32 @@ def extract(trace_filenames, label_mapper, label_extractor, img_feature_extracto
     # init parallel arguments
     parallel_args = [(item[0], item[1]) for item in product(trace_filenames, [TCP, UDP])]
 
-    # get number of cpus available to job
-    try:
-        ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
-    except KeyError:
-        ncpus = multiprocessing.cpu_count()
+    if parallel is True:
+        # get number of cpus available to job
+        # NOW just a fixed number as the memory would explode otherwise
+        # try:
+        #     ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
+        # except KeyError:
+        #     ncpus = multiprocessing.cpu_count()
+        ncpus = 4
 
-    # create pool of ncpus workers
-    p = multiprocessing.Pool(ncpus)
+        # create pool of ncpus workers
+        p = multiprocessing.Pool(ncpus)
 
-    # mapping phase: apply work function in parallel
-    res = p.starmap(partial(extract_flow_img_from_single_trace_file,
-                            img_feature_extractor,
-                            label_mapper,
-                            label_extractor), parallel_args)
+        # mapping phase: apply work function in parallel
+        res = p.starmap(partial(extract_flow_img_from_single_trace_file,
+                                img_feature_extractor,
+                                label_mapper,
+                                label_extractor), parallel_args)
+    else:
+        res = []
+        for trace_filename, trans_layer_type in tqdm(parallel_args, desc='Sequential'):
+            res.append(extract_flow_img_from_single_trace_file(
+                                img_feature_extractor,
+                                label_mapper,
+                                label_extractor,
+                                trace_filename,
+                                trans_layer_type))
 
     # reduce phase: concatenate, do stats
     for single_tracefile_images, single_tracefile_labels, trans_layer_name in res:
