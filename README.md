@@ -19,24 +19,24 @@ Extract features from raw trace
     - extract flow image features
         1. set environment variables for `PYTHONPATH`
             ```shell
-            export PYTHONPATH=$(pwd)/:$PYTHONPATH
+            export PYTHONPATH=$(pwd)/python:$PYTHONPATH
             ```
         2. extract image features
             - extract above IP layer, IP w/ transport layer (only for TCP or UDP) header with fixed-length transport layer payload.
                 ```shell
-                python3 extract_img_feature.py -td ${YOUR_DATA_PATH} -l ${YOUR_LABEL_TYPE} -m ${MAX_PKTS_PER_FLOW} -s ${SAVING_PATH} -tr ${TRAINING_RATIO} -i ip-above
+                python3 extract_img_feature.py -td ${YOUR_TRACE_DIR} -l ${YOUR_LABEL_TYPE} -m ${MAX_PKTS_PER_FLOW} -s ${SAVING_PATH} -tr ${TRAINING_RATIO} -i ip-above
                 ```
                 e.g. 
                 ```shell
-                python3 -m extract_img_feature -td data/unb-vpn-app/pcap-trace/vpn-test/ -l vpn -m 10 -s vpn-test/ -tr 0.8 -i ip-above
+                python3 extract_img_feature.py -td data/unb-vpn-app/pcap-trace/vpn-test/ -l vpn -m 10 -s vpn-test/ -tr 0.8 -i ip-above
                 ```
             - extract fixed-length transport layer payload
                 ```shell
-                python3 extract_img_feature.py -td ${YOUR_DATA_PATH} -l ${YOUR_LABEL_TYPE} -s ${SAVING_PATH} -tr ${TRAINING_RATIO} -i payload-len
+                python3 extract_img_feature.py -td ${YOUR_TRACE_DIR} -l ${YOUR_LABEL_TYPE} -s ${SAVING_PATH} -tr ${TRAINING_RATIO} -i payload-len
                 ```
                 e.g.
                 ```shell
-                python3 -m extract_img_feature -td data/unb-vpn-app/pcap-trace/vpn-test/ -l vpn -s vpn-test/ -tr 0.8 -i payload-len
+                python3 extract_img_feature.py -td data/unb-vpn-app/pcap-trace/vpn-test/ -l vpn -s vpn-test/ -tr 0.8 -i payload-len
                 ```
             - APPENDIX: label type contains the following for now
                 * vpn
