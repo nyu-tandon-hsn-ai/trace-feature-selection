@@ -22,7 +22,7 @@ Extract features from raw trace
             export PYTHONPATH=$(pwd)/python:$PYTHONPATH
             ```
         2. extract image features
-            - extract above IP layer, IP w/ transport layer (only for TCP or UDP) header with fixed-length transport layer payload.
+            - extract above IP layer, IP w/ transport layer (only for TCP or UDP) header with fixed-length transport layer payload.
                 ```shell
                 python3 extract_img_feature.py -td ${YOUR_TRACE_DIR} -l ${YOUR_LABEL_TYPE} -m ${MAX_PKTS_PER_FLOW} -s ${SAVING_PATH} -tr ${TRAINING_RATIO} -i ip-above
                 ```
