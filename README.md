@@ -15,7 +15,6 @@ Extract features from raw trace
         - if you are extracting features for **DDoS Detection**, use [extract_ddos_feature.ipynb](./extract_ddos_feature.ipynb)
         - if you are extracting **packet-based features** for **application type detection**, use [extract_app_pkt_feature.ipynb](./extract_app_pkt_feature.ipynb)
         - if you are extracting **flow-based features** for **application type detection**, use [extract_app_flow_feature.ipynb](./extract_app_flow_feature.ipynb)
-        - otherwise, feel free to hang around ;)
     - extract flow image features
         1. set environment variables for `PYTHONPATH`
             ```shell
