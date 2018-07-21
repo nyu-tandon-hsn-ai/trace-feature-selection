@@ -8,6 +8,8 @@ import numpy as np
 from scapy.all import *
 from tqdm import tqdm
 
+from session_info import extract_session_info
+
 def stringify_protocol(protocol):
     if protocol is TCP:
         return 'TCP'
@@ -38,6 +40,44 @@ def extract_flow_img_from_single_trace_file(img_feature_extractor, label_mapper,
 
     return images, np.repeat(label, images.shape[0]), stringify_protocol(trans_layer_type)
 
+
+
+def _extract_session_info(sessions, session, trans_layer_type):
+    # Special case
+    if session == 'Other':
+        # error-proof
+        assert len(sessions[session]) > 0
+
+        # extract the first packet we want
+        f_pkt= None
+        for pkt in sessions[session]:
+            if IP in pkt and trans_layer_type in pkt:
+                f_pkt=pkt
+        
+        # assertion error
+        if f_pkt is None:
+            raise AssertionError()
+        
+        # extract five tuples
+        trans_layer_str=stringify_protocol(trans_layer_type)
+        session='{protocol} {ip0}:{port0} > {ip1}:{port1}'.format(
+            protocol=trans_layer_str,
+            ip0=f_pkt[IP].src,
+            ip1=f_pkt[IP].dst,
+            port0=f_pkt[trans_layer_type].sport,
+            port1=f_pkt[trans_layer_type].dport
+        )
+
+    # extract session info
+    sess_info = extract_session_info(session)
+
+    # convert
+    return [int(sess_info['is_tcp'])] + \
+            list(sess_info['ip0'].to_bytes(4, byteorder='big')) + \
+            list(sess_info['port0'].to_bytes(2, byteorder='big')) + \
+            list(sess_info['ip1'].to_bytes(4, byteorder='big')) + \
+            list(sess_info['port1'].to_bytes(2, byteorder='big'))
+
 def extract(trace_filenames, label_mapper, label_extractor, img_feature_extractor, parallel=False):
     '''
     Extract image features and labels
@@ -64,11 +104,10 @@ def extract(trace_filenames, label_mapper, label_extractor, img_feature_extracto
     if parallel is True:
         # get number of cpus available to job
         # NOW just a fixed number as the memory would explode otherwise
-        # try:
-        #     ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
-        # except KeyError:
-        #     ncpus = multiprocessing.cpu_count()
-        ncpus = 4
+        try:
+            ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
+        except KeyError:
+            ncpus = multiprocessing.cpu_count()
 
         # create pool of ncpus workers
         p = multiprocessing.Pool(ncpus)

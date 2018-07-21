@@ -6,8 +6,7 @@ import scapy
 from scapy.all import *
 
 from utils import normalize_to
-from session_info import extract_session_info
-from img_feature import stringify_protocol, calculate_inter_arri_times
+from img_feature import stringify_protocol, calculate_inter_arri_times, _extract_session_info
 
 class Extractor:
 
@@ -72,42 +71,6 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
             difference = max_pkts_per_flow - 1 - len(inter_arri_times)
             inter_arri_times = np.append(inter_arri_times,[0] * difference).astype(np.int32)
         return inter_arri_times
-
-    def _extract_session_info(self, sessions, session, trans_layer_type):
-        # Special case
-        if session == 'Other':
-            # error-proof
-            assert len(sessions[session]) > 0
-
-            # extract the first packet we want
-            f_pkt= None
-            for pkt in sessions[session]:
-                if IP in pkt and trans_layer_type in pkt:
-                    f_pkt=pkt
-            
-            # assertion error
-            if f_pkt is None:
-                raise AssertionError()
-            
-            # extract five tuples
-            trans_layer_str=stringify_protocol(trans_layer_type)
-            session='{protocol} {ip0}:{port0} > {ip1}:{port1}'.format(
-                protocol=trans_layer_str,
-                ip0=f_pkt[IP].src,
-                ip1=f_pkt[IP].dst,
-                port0=f_pkt[trans_layer_type].sport,
-                port1=f_pkt[trans_layer_type].dport
-            )
-
-        # extract session info
-        sess_info = extract_session_info(session)
-
-        # convert
-        return [int(sess_info['is_tcp'])] + \
-                list(sess_info['ip0'].to_bytes(4, byteorder='big')) + \
-                list(sess_info['port0'].to_bytes(2, byteorder='big')) + \
-                list(sess_info['ip1'].to_bytes(4, byteorder='big')) + \
-                list(sess_info['port1'].to_bytes(2, byteorder='big'))
 
     def _extract_pkt_signature(self, pkt, trans_layer_type):
         # copy packet
@@ -182,7 +145,7 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
                 raise AssertionError()
 
             # get session inoformation
-            session_info = self._extract_session_info(sessions, session, trans_layer_type)
+            session_info = _extract_session_info(sessions, session, trans_layer_type)
 
             # handle flow signatures
             flow_signatures = self._handle_flow_signatures(flow_signatures, pkt_count, max_pkts_per_flow)
@@ -200,6 +163,8 @@ class AboveIpLayerHeaderPayloadExtractor(Extractor):
 class AppLayerLengthExtractor(Extractor):
     
     def __init__(self, trans_layer_payload_len):
+        if trans_layer_payload_len >= 65536:
+            raise AssertionError('Only support less than 65536 bytes')
         self._trans_layer_payload_len = trans_layer_payload_len
     
     def _extract_description(self):
@@ -224,7 +189,7 @@ class AppLayerLengthExtractor(Extractor):
             # will we continue to do things
             flow_signatures = []
 
-            byte_count = 0
+            byte_count, pkt_count = 0, 0
 
             for pkt in tqdm(sessions[session], desc='Current session packets'):
 
@@ -233,12 +198,16 @@ class AppLayerLengthExtractor(Extractor):
                     # transport layer payload
                     trans_layer_payload = self._extract_trans_layer_payload(pkt, trans_layer_type)
 
+                    # count byte_count
                     if byte_count + len(trans_layer_payload) > self._trans_layer_payload_len:
                         trans_layer_payload = trans_layer_payload[\
                             :-(byte_count + len(trans_layer_payload) - self._trans_layer_payload_len)]
                         byte_count = self._trans_layer_payload_len
                     else:
                         byte_count += len(trans_layer_payload)
+
+                    # increment pkt_count
+                    pkt_count += 1
 
                     # extract flow_signature
                     flow_signatures.extend(trans_layer_payload)
@@ -256,9 +225,13 @@ class AppLayerLengthExtractor(Extractor):
             # padding
             if len(flow_signatures) < self._trans_layer_payload_len:
                 flow_signatures += [0] * (self._trans_layer_payload_len - len(flow_signatures))
-                
+            
+            # get session inoformation
+            session_info = _extract_session_info(sessions, session, trans_layer_type)
+            
+            print('bytes:', byte_count)
             # generate images
-            img = np.array(flow_signatures)
+            img = np.concatenate([session_info, [item for item in pkt_count.to_bytes(2, byteorder='big')], [item for item in byte_count.to_bytes(2, byteorder='big')], flow_signatures])
 
             # add to imgs
             imgs.append(img)

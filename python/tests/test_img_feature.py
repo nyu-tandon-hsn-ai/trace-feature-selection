@@ -5,7 +5,7 @@ import os
 from scapy.all import *
 import numpy as np
 
-from img_feature import stringify_protocol, calculate_inter_arri_times
+from img_feature import stringify_protocol, calculate_inter_arri_times, _extract_session_info
 from img_feature.extractor import AboveIpLayerHeaderPayloadExtractor, AppLayerLengthExtractor
 
 ######################################################################
@@ -14,6 +14,41 @@ from img_feature.extractor import AboveIpLayerHeaderPayloadExtractor, AppLayerLe
 # TODO: test more methods
 class TestImageFeature(unittest.TestCase):
     """ Test Cases for extracting image features """
+    
+    #TODO:
+    # 1. not test special case
+    def test_extract_session_info(self):
+        """ Test if _extract_session_info() functions well """
+
+        #########
+        # CASE 1
+        # TCP 
+        #########
+        tcp_session = 'TCP 192.168.0.1:80 > 127.0.0.1:443'
+        right_answer = [1]
+        right_answer.extend([item for item in int(IPv4Address('192.168.0.1')).to_bytes(4, byteorder='big')])
+        right_answer.append(0)
+        right_answer.append(80)
+        right_answer.extend([item for item in int(IPv4Address('127.0.0.1')).to_bytes(4, byteorder='big')])
+        right_answer.append(1)
+        right_answer.append(187)
+
+        self.assertEqual(_extract_session_info(None, tcp_session, TCP), right_answer)
+
+        ##########
+        # CASE 2
+        # UDP
+        #########
+        udp_session = 'UDP 192.168.0.1:80 > 127.0.0.1:443'
+        right_answer = [0]
+        right_answer.extend([item for item in int(IPv4Address('192.168.0.1')).to_bytes(4, byteorder='big')])
+        right_answer.append(0)
+        right_answer.append(80)
+        right_answer.extend([item for item in int(IPv4Address('127.0.0.1')).to_bytes(4, byteorder='big')])
+        right_answer.append(1)
+        right_answer.append(187)
+
+        self.assertEqual(_extract_session_info(None, udp_session, UDP), right_answer)
 
     def test_stringify_protocol(self):
         """ Test if stringify_protocol() functions well """
@@ -245,41 +280,6 @@ class TestAboveIPExtractor(unittest.TestCase):
 
         self.assertEqual(len(pkt_signature), AboveIpLayerHeaderPayloadExtractor.IP2TRANS_LAYER_HEADER_LEN + TestAboveIPExtractor.extractor._trans_layer_payload_len)
         self.assertEqual(pkt_signature, right_answer)
-    
-    #TODO:
-    # 1. not test special case
-    def test_extract_session_info(self):
-        """ Test if _extract_session_info() functions well """
-
-        #########
-        # CASE 1
-        # TCP 
-        #########
-        tcp_session = 'TCP 192.168.0.1:80 > 127.0.0.1:443'
-        right_answer = [1]
-        right_answer.extend([item for item in int(IPv4Address('192.168.0.1')).to_bytes(4, byteorder='big')])
-        right_answer.append(0)
-        right_answer.append(80)
-        right_answer.extend([item for item in int(IPv4Address('127.0.0.1')).to_bytes(4, byteorder='big')])
-        right_answer.append(1)
-        right_answer.append(187)
-
-        self.assertEqual(TestAboveIPExtractor.extractor._extract_session_info(None, tcp_session, TCP), right_answer)
-
-        ##########
-        # CASE 2
-        # UDP
-        #########
-        udp_session = 'UDP 192.168.0.1:80 > 127.0.0.1:443'
-        right_answer = [0]
-        right_answer.extend([item for item in int(IPv4Address('192.168.0.1')).to_bytes(4, byteorder='big')])
-        right_answer.append(0)
-        right_answer.append(80)
-        right_answer.extend([item for item in int(IPv4Address('127.0.0.1')).to_bytes(4, byteorder='big')])
-        right_answer.append(1)
-        right_answer.append(187)
-
-        self.assertEqual(TestAboveIPExtractor.extractor._extract_session_info(None, udp_session, UDP), right_answer)
 
 # TODO: test more methods
 class TestAppLayerLengthExtractor(unittest.TestCase):
@@ -313,7 +313,7 @@ class TestAppLayerLengthExtractor(unittest.TestCase):
 
         # UDP
         res = TestAppLayerLengthExtractor.extractor.extract_flow_img(TestAppLayerLengthExtractor.test_path, UDP)
-        right_answer = np.array([45, 109, 129, 128, 0, 1, 0, 17, 0, 0, 0, 0, 3, 119, 119, 119, 16, 103, 111, 111])
+        right_answer = np.array([[0, 10, 0, 0, 138, 0, 53, 10, 0, 0, 1, 227, 13, 0, 1, 0, 20, 45, 109, 129, 128, 0, 1, 0, 17, 0, 0, 0, 0, 3, 119, 119, 119, 16, 103, 111, 111]])
         self.assertTrue((res == right_answer).all())
 
         # TCP
