@@ -229,7 +229,6 @@ class AppLayerLengthExtractor(Extractor):
             # get session inoformation
             session_info = _extract_session_info(sessions, session, trans_layer_type)
             
-            print('bytes:', byte_count)
             # generate images
             img = np.concatenate([session_info, [item for item in pkt_count.to_bytes(2, byteorder='big')], [item for item in byte_count.to_bytes(2, byteorder='big')], flow_signatures])
 
