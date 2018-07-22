@@ -228,9 +228,13 @@ class AppLayerLengthExtractor(Extractor):
             
             # get session inoformation
             session_info = _extract_session_info(sessions, session, trans_layer_type)
+
+            # check number bound
+            if len(hex(pkt_count)[2:]) > 2 * 4:
+                raise AssertionError('Too many packets per flow: {0} packets'.format(pkt_count))
             
             # generate images
-            img = np.concatenate([session_info, [item for item in pkt_count.to_bytes(2, byteorder='big')], [item for item in byte_count.to_bytes(2, byteorder='big')], flow_signatures])
+            img = np.concatenate([session_info, [item for item in pkt_count.to_bytes(4, byteorder='big')], [item for item in byte_count.to_bytes(2, byteorder='big')], flow_signatures])
 
             # add to imgs
             imgs.append(img)

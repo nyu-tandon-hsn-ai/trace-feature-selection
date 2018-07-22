@@ -313,7 +313,7 @@ class TestAppLayerLengthExtractor(unittest.TestCase):
 
         # UDP
         res = TestAppLayerLengthExtractor.extractor.extract_flow_img(TestAppLayerLengthExtractor.test_path, UDP)
-        right_answer = np.array([[0, 10, 0, 0, 138, 0, 53, 10, 0, 0, 1, 227, 13, 0, 1, 0, 20, 45, 109, 129, 128, 0, 1, 0, 17, 0, 0, 0, 0, 3, 119, 119, 119, 16, 103, 111, 111]])
+        right_answer = np.array([[0, 10, 0, 0, 138, 0, 53, 10, 0, 0, 1, 227, 13, 0, 0, 0, 1, 0, 20, 45, 109, 129, 128, 0, 1, 0, 17, 0, 0, 0, 0, 3, 119, 119, 119, 16, 103, 111, 111]])
         self.assertTrue((res == right_answer).all())
 
         # TCP
