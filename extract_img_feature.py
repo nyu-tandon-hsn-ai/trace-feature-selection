@@ -57,7 +57,7 @@ def _get_img_feature_extractor(img_feature_type, left_over):
         max_pkts_per_flow = args.max_pkts_per_flow
         return AboveIpLayerHeaderPayloadExtractor(max_pkts_per_flow,trans_layer_payload_len=20)
     elif img_feature_type == 'payload-len':
-        return AppLayerLengthExtractor(trans_layer_payload_len=784)
+        return AppLayerLengthExtractor(trans_layer_payload_len=1000)
     else:
         raise AssertionError('Unknown image feature type {}'.format(img_feature_type))
 
