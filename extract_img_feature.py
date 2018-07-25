@@ -51,13 +51,16 @@ def _get_label_extractor(label_type):
 # TODO?
 def _get_img_feature_extractor(img_feature_type, left_over):
     if img_feature_type == 'ip-above':
-        parser = argparse.ArgumentParser(description = 'IP Layer Above Preprocessing')
+        parser = argparse.ArgumentParser(description = 'IP Layer Above Image Feature Preprocessing')
         parser.add_argument('-m', '--max-pkts-per-flow', help='max packets per flow', type=int, default=10)
         args = parser.parse_args(left_over)
         max_pkts_per_flow = args.max_pkts_per_flow
         return AboveIpLayerHeaderPayloadExtractor(max_pkts_per_flow,trans_layer_payload_len=20)
     elif img_feature_type == 'payload-len':
-        return AppLayerLengthExtractor(trans_layer_payload_len=1000)
+        parser = argparse.ArgumentParser(description = 'Payload Length Image Feature Preprocessing')
+        parser.add_argument('-p', '--payload-len', help='bytes of payload per flow', type=int, default=784)
+        args = parser.parse_args(left_over)
+        return AppLayerLengthExtractor(trans_layer_payload_len=args.payload_len)
     else:
         raise AssertionError('Unknown image feature type {}'.format(img_feature_type))
 
@@ -93,6 +96,9 @@ def _main():
                 label_mapper=label_mapper,
                 label_extractor=label_extractor,
                 img_feature_extractor=img_feature_extractor)
+    
+    # mapping information
+    print('Label mapping->', str(label_mapper))
 
     # raw statistics
     print('Raw->', Counter([label_mapper.id2name(label) for label in data['labels']]))
